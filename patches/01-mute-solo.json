@@ -1,0 +1,63 @@
+{
+ "id": "mute-solo",
+ "order": 1,
+ "name": "Solo in latching mute mode",
+ "description": [
+  "In latching mute mode: hold FUNC + track key = solo that track; the same again = back to the previous mutes.",
+  "Requires drumkilla's latching-mute (elektron-model-tweaks, MIT), applied first."
+ ],
+ "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
+ "os": "1.13",
+ "section": 3,
+ "requires": [
+  "latching-mute"
+ ],
+ "conflicts": [
+  "model-tg",
+  "model-tg-st"
+ ],
+ "symbols": {
+  "solo_entry": "0x40167c50",
+  "saved": "0x40167d58",
+  "solo_flag": "0x40167d5e"
+ },
+ "hooks": [
+  "0x40023550"
+ ],
+ "memory": [
+  {
+   "va": "0x40167c50",
+   "size": 280
+  }
+ ],
+ "writes": [
+  {
+   "off": 143696,
+   "va": "0x40023550",
+   "len": 6,
+   "old_sha256": "547f231bd41f965dbbe4e0fdec93c267ac2849729718f9e81e1a18d7f7513740",
+   "new": "4eb940167c50"
+  },
+  {
+   "off": 728350,
+   "va": "0x400b211e",
+   "len": 4,
+   "old_sha256": "e9865e8360f6f74d8a58c84b5f7da0c8d9e366a4d4d3da7585f998859d6e552d",
+   "new": "4014a660"
+  },
+  {
+   "off": 1472592,
+   "va": "0x40167c50",
+   "len": 258,
+   "old_sha256": "f0357048477bf4277ab4a93caeae2d1d4d8417e5c2e8d2519f11dc18634e38e0",
+   "new": "4a39401487ed670000ee487800014eb94007faf4588f4a80670000dc4feffff048d7041c246f0014242f001820522f0a206800284e90588f4a80670000b07005b082650000a87000103940167d5e22025281b280670000644a806600002676002f032f0a4eb94001263c508f718041f940167d581180380052837006b6806d00ffe076007801b682660000047800487800012f042f032f0a4eb94001381c4fef001052837006b6806d00ffda2002528013c040167d5e60000034760041f940167d58780018303800487800012f042f032f0a4eb94001381c4fef001052837006b6806d00ffd8423940167d5e4cd7041c4fef00104e75423940167d5e4ef940013904"
+  },
+  {
+   "off": 1472856,
+   "va": "0x40167d58",
+   "len": 8,
+   "old_sha256": "f5c270ec0b7f79deaf9f34be302b0b1f3b4a7beded77bcacce8c98a669dce28a",
+   "new": "0000000000000000"
+  }
+ ]
+}

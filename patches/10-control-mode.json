@@ -1,0 +1,147 @@
+{
+ "id": "control-mode",
+ "order": 10,
+ "name": "Control mode: CONTROL ALL relative or absolute",
+ "description": [
+  "Hold TRACK + tap SETTINGS = switch CONTROL ALL between Relative (firmware: every track moves by the same amount",
+  "and stops at its limit) and Absolute (all tracks take the new value of the selected track).",
+  "Applies to TRACK + knob, TRACK + LEVEL (volume), FUNC + TRACK + LEVEL (pan) and humanize of the groove mod.",
+  "Global setting, kept after power-off."
+ ],
+ "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
+ "os": "1.13",
+ "section": 3,
+ "requires": [
+  "core"
+ ],
+ "hooks": [
+  "0x40100588",
+  "0x4001ab7a",
+  "0x4001aaec"
+ ],
+ "memory": [
+  {
+   "va": "0x40182b38",
+   "size": 376
+  },
+  {
+   "va": "0x40182e28",
+   "size": 376
+  },
+  {
+   "va": "0x4a33c3a8",
+   "size": 2,
+   "ram": true,
+   "use": "SETTINGS used since press, byte for COPY"
+  }
+ ],
+ "settings": [
+  "0x404e9b5d (0x5a absolute, anything else relative)"
+ ],
+ "symbols": {
+  "CA": "0x40182b38",
+  "PO": "0x40182c02",
+  "LV": "0x40182c2c",
+  "LP": "0x40182e28",
+  "CMK": "0x40182eb6",
+  "CME": "0x40182f4c",
+  "T_L1": "0x40182f6a",
+  "T_L2": "0x40182f72",
+  "T_ABS": "0x40182f76",
+  "T_REL": "0x40182f7f"
+ },
+ "params": {
+  "slot": 5,
+  "kslot": 0,
+  "abs": 90,
+  "texts": {
+   "l1": "Control",
+   "l2": "All",
+   "abs": "Absolute",
+   "rel": "Relative"
+  }
+ },
+ "writes": [
+  {
+   "off": 108268,
+   "va": "0x4001aaec",
+   "len": 6,
+   "old_sha256": "374b55394d625229746501ff009282acfaca2cf2afe019f5f928d4e0a75a5288",
+   "new": "4ef940182e28"
+  },
+  {
+   "off": 108410,
+   "va": "0x4001ab7a",
+   "len": 6,
+   "old_sha256": "a9582d71004325d3910cf00e3f68321081f3275f410d6fb86f72c9e44125efec",
+   "new": "4ef940182c2c"
+  },
+  {
+   "off": 711610,
+   "va": "0x400adfba",
+   "len": 4,
+   "old_sha256": "c1ab9c2c869711ffe7b7d60e83e49b0a9472eb220f1d155d3ec37feaf14c24ca",
+   "new": "40172220"
+  },
+  {
+   "off": 711642,
+   "va": "0x400adfda",
+   "len": 4,
+   "old_sha256": "4edacc0cbce61cb59ecd4299cc575061291d47992371aeff7ff31b31ccfcc9cb",
+   "new": "40172220"
+  },
+  {
+   "off": 1048968,
+   "va": "0x40100588",
+   "len": 4,
+   "old_sha256": "f6a3faf765b16c8bda50bc45b8f362dd0a1ca65483376266b3014640fb9a42ea",
+   "new": "40182b38"
+  },
+  {
+   "off": 1582904,
+   "va": "0x40182b38",
+   "len": 354,
+   "old_sha256": "b62f610f32de598b6545b8cfc8903bf19db75c6b6ca31df422fad7bcc0b7a39d",
+   "new": "71b9404e9b5d725ab081670000084ef94001d6e44fefffe048d70cfc246f00242c2f00282e2f002c4eb9400cf8662f004eb94000eb902f004eb940012412508f2800487800014eb94007faf4588f4a8056c0710044802a0024046100006e2240205142a742a742a742a72f022f072f032f00206800204e904fef00202e007400b48467000032610000422640205342a72f072f032f0b206800144e904fef001042a742a72f022f002f032f0b4eb94000b2744fef001852827006b0826600ffc24cd70cfc4fef00204e7520522068007c2f022f052f062f0a4e904fef001026002052206800802f032f022f0a4e904fef000c4e750000000000004a066700001071b9404e9b5d725ab081670000084ef94001ab8045f94000a3ae7f472f032f024e93508fd087487800012f002f032f024e924fef00102f032f024e93508f2e007600487800012f072f032f024e924fef001052837006b0836600ffe84ef94001abce",
+   "from_original": [
+    {
+     "at": 244,
+     "off": 108410,
+     "va": "0x4001ab7a",
+     "len": 6,
+     "sha256": "a9582d71004325d3910cf00e3f68321081f3275f410d6fb86f72c9e44125efec"
+    }
+   ]
+  },
+  {
+   "off": 1583656,
+   "va": "0x40182e28",
+   "len": 352,
+   "old_sha256": "dbc2b1dc76c536fef1224f899df3bacd22d1dd4c729d3b07813c1edea2c19c1d",
+   "new": "0000000000004a066700001071b9404e9b5d725ab081670000084ef94001aaf247f94000b2747f472f032f024e92508f2c00224020514878001c2f002068001c4e90508fd0874878000142a72f032f004878001c2f064e934fef00182e0076002f032f024e92508f4878000142a72f032f074878001c2f004e934fef001852837006b0836600ffda4ef94001abce4a816600000c42394a33c3a870004e754a394a33c3a866000074487800024eb94007faf4588f4a806700006271b9404e9b5d725ab08166000004720013c14a33c3a94878000148794a33c3a94879404e9b5d4eb940044b884fef000c41f940182f7f4a394a33c3a96700000841f940182f76220841f940182f6a43f940182f7270024eb94015c04470014e7542394a33c3a870004e754878000d4eb94007faf4588f4a806700000a700113c04a33c3a870004e75436f6e74726f6c00416c6c004162736f6c7574650052656c617469766500",
+   "from_original": [
+    {
+     "at": 0,
+     "off": 108268,
+     "va": "0x4001aaec",
+     "len": 6,
+     "sha256": "374b55394d625229746501ff009282acfaca2cf2afe019f5f928d4e0a75a5288"
+    }
+   ]
+  },
+  {
+   "off": 1628328,
+   "va": "0x4018dca8",
+   "len": 4,
+   "old_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+   "new": "40182eb6"
+  },
+  {
+   "off": 1634824,
+   "va": "0x4018f608",
+   "len": 4,
+   "old_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+   "new": "40182f4c"
+  }
+ ]
+}

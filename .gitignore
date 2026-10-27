@@ -1,0 +1,10 @@
+# never commit firmware or firmware images
+*.syx
+*.bin
+build/
+# local checkouts used by the tools and tests
+Modded-Cycles/
+elektron-model-tweaks/
+__pycache__/
+*.pyc
+overlay_preview.png

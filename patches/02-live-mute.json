@@ -1,0 +1,52 @@
+{
+ "id": "live-mute",
+ "order": 2,
+ "name": "Mute also applies to live notes",
+ "description": [
+  "A note-on for a muted track is dropped: pads and incoming MIDI no longer play a muted track."
+ ],
+ "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
+ "os": "1.13",
+ "section": 3,
+ "hooks": [
+  "0x4005894a"
+ ],
+ "memory": [
+  {
+   "va": "0x401696a0",
+   "size": 62
+  }
+ ],
+ "writes": [
+  {
+   "off": 361802,
+   "va": "0x4005894a",
+   "len": 6,
+   "old_sha256": "8d1503d38f264a9b0be0700a53c1e2e61354803cc529f54092a511ae826bca7f",
+   "new": "4ef9401696a0"
+  },
+  {
+   "off": 725312,
+   "va": "0x400b1540",
+   "len": 4,
+   "old_sha256": "e9880337d844cf176ef8fcd2c5b9af5e400f38371cf3e09faa9181125dfde78a",
+   "new": "4014a660"
+  },
+  {
+   "off": 1479328,
+   "va": "0x401696a0",
+   "len": 62,
+   "old_sha256": "5af162325437ca1028a34ab75d33ed70e536f1f14c6f53d52751f91b5f1fcc43",
+   "new": "0000000000007001b0aa000c6600002a22122f014eb9400cf8662f004eb94000eb90588f2f004eb94001263c508f4a0067000006245f4e754ef940058950",
+   "from_original": [
+    {
+     "at": 0,
+     "off": 361802,
+     "va": "0x4005894a",
+     "len": 6,
+     "sha256": "8d1503d38f264a9b0be0700a53c1e2e61354803cc529f54092a511ae826bca7f"
+    }
+   ]
+  }
+ ]
+}

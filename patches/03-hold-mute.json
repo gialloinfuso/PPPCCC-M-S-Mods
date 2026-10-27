@@ -1,0 +1,113 @@
+{
+ "id": "hold-mute",
+ "order": 3,
+ "name": "Hold a pad to mute its track",
+ "description": [
+  "Sequencer running: hold T1-T6 (about 200 ms or longer) = the track is muted until you let go; a tap plays the sound on release.",
+  "Sequencer stopped: the pads play normally."
+ ],
+ "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
+ "os": "1.13",
+ "section": 3,
+ "conflicts": [
+  "level-pan-values"
+ ],
+ "hooks": [
+  "0x400081f2",
+  "0x4001d05e",
+  "0x4001d0fc"
+ ],
+ "memory": [
+  {
+   "va": "0x401699a8",
+   "size": 280,
+   "use": "press hook + UI tick"
+  },
+  {
+   "va": "0x4016aa28",
+   "size": 280,
+   "use": "release hook + state"
+  }
+ ],
+ "symbols": {
+  "state": "0x4016aae0",
+  "tick": "0x40169a00",
+  "tick_next": "0x40090f48"
+ },
+ "writes": [
+  {
+   "off": 32242,
+   "va": "0x400081f2",
+   "len": 6,
+   "old_sha256": "9655758ad5fef1cf55a91330b4eeb8b9c1100b2ad0613bf330123e2d68507cfd",
+   "new": "4eb940169a00"
+  },
+  {
+   "off": 117854,
+   "va": "0x4001d05e",
+   "len": 6,
+   "old_sha256": "5ce8271cb6586ad4860e3aa6705562a63e60438793d61114cc7010405aa0c780",
+   "new": "4ef9401699a8"
+  },
+  {
+   "off": 118012,
+   "va": "0x4001d0fc",
+   "len": 6,
+   "old_sha256": "62084066504316135ae81e12d4ecc99c9919db42425cc8fa2be3ea0a8ef3bbc4",
+   "new": "4ef94016aa28"
+  },
+  {
+   "off": 725120,
+   "va": "0x400b1480",
+   "len": 4,
+   "old_sha256": "03adc9476cdccda30563247a1f76c0a67ad1f218e87c519683e13a1ecb6f24a6",
+   "new": "4014a660"
+  },
+  {
+   "off": 725248,
+   "va": "0x400b1500",
+   "len": 4,
+   "old_sha256": "3f59843c5a53c2f1edd757f577aa188937a61e14b7d338553f78745b5616d577",
+   "new": "4014a660"
+  },
+  {
+   "off": 1480104,
+   "va": "0x401699a8",
+   "len": 248,
+   "old_sha256": "7612870473e0195dd0c19d1264929f1e1e8b3630095a0316b8bdbb954cfc9bab",
+   "new": "4eb94005481a4a8067000042202f00087205b28065000036e98841f94016aae0d1c020b9fc07000c22280004028100000300202f000c5280808121400004216f00100008216f0014000c4e750000000000004ef94001d0644feffff448d7040c740045f94016aae0202a00046700006e08000009660000662039fc07000c90920c8001a0000065000054202a000408c00009254000044eb9400cf8662f004eb94000eb90588f26002f022f034eb94001263c508f4a006600002448780001487800012f022f034eb94001381c4fef0010202a000408c0000825400004528245ea00107006b0826600ff804cd7040c4fef000c4ef940090f48",
+   "from_original": [
+    {
+     "at": 76,
+     "off": 117854,
+     "va": "0x4001d05e",
+     "len": 6,
+     "sha256": "5ce8271cb6586ad4860e3aa6705562a63e60438793d61114cc7010405aa0c780"
+    }
+   ]
+  },
+  {
+   "off": 1484328,
+   "va": "0x4016aa28",
+   "len": 156,
+   "old_sha256": "f16d5c28ca1250f3289327b86e4ae6a0ba69636126a2c409b6ec39a96b6a5ab5",
+   "new": "202f00087205b28065000056e98841f94016aae0d1c0222800046700004442a8000408010009660000442039fc07000c90900c8001a00000640000320281000000ff2f28000c2f28000853812f012f2f00142f2f00144eb9401699f44fef00140000000000004ef94001d10208010008670000284eb9400cf8662f004eb94000eb90588f4878000142a72f2f00102f004eb94001381c4fef00104e75",
+   "from_original": [
+    {
+     "at": 96,
+     "off": 118012,
+     "va": "0x4001d0fc",
+     "len": 6,
+     "sha256": "62084066504316135ae81e12d4ecc99c9919db42425cc8fa2be3ea0a8ef3bbc4"
+    }
+   ]
+  },
+  {
+   "off": 1484512,
+   "va": "0x4016aae0",
+   "len": 96,
+   "old_sha256": "7dba6d9af881fef35a1fda51de3b3063c6c3fcd87c62dbe931d67de0962a27b0",
+   "new": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  }
+ ]
+}

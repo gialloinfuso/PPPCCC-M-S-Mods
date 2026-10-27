@@ -1,0 +1,90 @@
+{
+ "id": "delay-notes",
+ "order": 4,
+ "name": "Delay Time as note values, exact triplets",
+ "description": [
+  "Delay Time shows note values (1/1 ... /64, dotted, triplets) instead of numbers at those positions;",
+  "the triplet positions get the exact triplet length."
+ ],
+ "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
+ "os": "1.13",
+ "section": 3,
+ "hooks": [
+  "0x4004dfda",
+  "0x400581b8"
+ ],
+ "memory": [
+  {
+   "va": "0x4018d918",
+   "size": 328,
+   "use": "display + table"
+  },
+  {
+   "va": "0x40170ad8",
+   "size": 184,
+   "use": "DSP triplets"
+  }
+ ],
+ "writes": [
+  {
+   "off": 318426,
+   "va": "0x4004dfda",
+   "len": 6,
+   "old_sha256": "654f8facf7eac4ec161985a6799bd95cb49fd0d49bda96644ee358f56e409db5",
+   "new": "4ef94018d918"
+  },
+  {
+   "off": 359864,
+   "va": "0x400581b8",
+   "len": 6,
+   "old_sha256": "5e6408af00d1d51045ea95d4b8bc7b1e7f4da9efdaac918644d33450038db953",
+   "new": "4eb940170ad8"
+  },
+  {
+   "off": 706842,
+   "va": "0x400acd1a",
+   "len": 4,
+   "old_sha256": "56ddb66f0bf537fbac018c52afe27c79c33a15b3e547d6caba2c991788661eb4",
+   "new": "40187298"
+  },
+  {
+   "off": 722166,
+   "va": "0x400b08f6",
+   "len": 4,
+   "old_sha256": "227dbbecb48e64b240c8ababf20811f0b9f8d79b46f3e46f78391a83b36081da",
+   "new": "4016be58"
+  },
+  {
+   "off": 1509080,
+   "va": "0x40170ad8",
+   "len": 128,
+   "old_sha256": "5c5b11e38eff89b1b78b091afbb77e36dd36ca6fde806235f657427478ff705b",
+   "new": "0000000000002f0224000282000000ff6600006a2400e08a0c82000000056600000c068000000055600000520c820000000a6600000c0680000000ab6000003e0c82000000156600000c0680000000556000002a0c820000002a6600000c0680000000ab600000160c82000000556600000c06800000005560000002241f4e75",
+   "from_original": [
+    {
+     "at": 0,
+     "off": 359864,
+     "va": "0x400581b8",
+     "len": 6,
+     "sha256": "5e6408af00d1d51045ea95d4b8bc7b1e7f4da9efdaac918644d33450038db953"
+    }
+   ]
+  },
+  {
+   "off": 1627416,
+   "va": "0x4018d918",
+   "len": 222,
+   "old_sha256": "35047e29f7f8b75eff84a1a41ef0a808e130ecd501c442353cea225a1ecdd3e8",
+   "new": "202f00040c8040a725dc66000022202f0008e08041f94018d96e7211b0a800046700001841e8000853816600fff00000000000004ef94004dfe0222f000c2f48000c2f410004203c40124b582f4000084ef940000e6e2f363400000000012f33320000000003313654000000000433322e00000000052f31360000000007385400000000000931362e000000000b312f38000000000f3454000000000014382e000000000017312f34000000001f3254000000000029342e00000000002f312f32000000003f3154000000000054322e00000000005f312f31000000007f",
+   "from_original": [
+    {
+     "at": 46,
+     "off": 318426,
+     "va": "0x4004dfda",
+     "len": 6,
+     "sha256": "654f8facf7eac4ec161985a6799bd95cb49fd0d49bda96644ee358f56e409db5"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,114 @@
+{
+ "id": "strum",
+ "order": 7,
+ "name": "Strum for the CHORD machine",
+ "description": [
+  "SETTINGS + SHAPE: -80..80 = ms between chord notes; right = low to high, left = high to low, 0 = all at once.",
+  "Stored per pattern (header byte 56)."
+ ],
+ "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
+ "os": "1.13",
+ "section": 3,
+ "requires": [
+  "core"
+ ],
+ "hooks": [
+  "0x400ab240",
+  "0x400ab2d2"
+ ],
+ "memory": [
+  {
+   "va": "0x40192734",
+   "size": 376
+  },
+  {
+   "va": "0x4018d4a8",
+   "size": 376
+  },
+  {
+   "va": "0x4233c360",
+   "size": 24,
+   "ram": true,
+   "use": "voice counters"
+  },
+  {
+   "va": "0x4233c378",
+   "size": 4,
+   "ram": true,
+   "use": "root note level"
+  }
+ ],
+ "pattern": "header byte 56: strum, signed -80..80",
+ "symbols": {
+  "ST": "0x40192734",
+  "G0F": "0x4019287c",
+  "STH": "0x4018d4a8"
+ },
+ "params": {
+  "slot": 2,
+  "k": 96,
+  "smax": 80,
+  "cnt": "0x4233c360",
+  "g0": "0x4233c378"
+ },
+ "writes": [
+  {
+   "off": 699968,
+   "va": "0x400ab240",
+   "len": 6,
+   "old_sha256": "13187a38965400f61edba5135ed74da994ac2d300bd2c82157be68165467475b",
+   "new": "4ef940192734"
+  },
+  {
+   "off": 700114,
+   "va": "0x400ab2d2",
+   "len": 6,
+   "old_sha256": "37a77ef1bbd2879f9bea1730fa1954dbc1eeee9ce8c7474d97ef7f12d7a2614a",
+   "new": "4eb94019287c"
+  },
+  {
+   "off": 704178,
+   "va": "0x400ac2b2",
+   "len": 4,
+   "old_sha256": "befd9e594cd633151ef442814c2f81538259c0d5f1e09b0f11dd3e1482fd6e8c",
+   "new": "40172220"
+  },
+  {
+   "off": 706902,
+   "va": "0x400acd56",
+   "len": 4,
+   "old_sha256": "bb512290a0e68250ccd81583d8ee554b2bcf685f02c4d7f855cf2bd631ec8573",
+   "new": "40172220"
+  },
+  {
+   "off": 1626280,
+   "va": "0x4018d4a8",
+   "len": 152,
+   "old_sha256": "079cff5c5e755b7044b42fcd44052eb9ed8d88c960de7db004eda66cb1f417b4",
+   "new": "202a00040c800000000566000082712a00086700007a4878000d4eb94007faf4588f4a8067000068700d4eb94018f500203940a7887c67000052204041e877ea71100c80000000506e00000c0c80ffffffb06c0000047000732a0008d0810c80000000506f00000470500c80ffffffb06c00000470b01080220041f94018d53a93c970014eb94015c04470014e7570004e75537472756d00"
+  },
+  {
+   "off": 1634812,
+   "va": "0x4018f5fc",
+   "len": 4,
+   "old_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+   "new": "4018d4a8"
+  },
+  {
+   "off": 1647412,
+   "va": "0x40192734",
+   "len": 336,
+   "old_sha256": "4ca18f0cb0cc61a8c54db56a91938456df2afb5d2bf8205de7bdfcc19b3fc19c",
+   "new": "200a0480423088286b0001260c80000012a86400011c72000c800000031c6500000e04800000031c52816000ffec4a80660000fe7006b081630000f6e58941f94233c360d1c14aaa00386700000842906000001020100c800000ffff640000045290203940a7887c670000082240712977ea0c80000000506e00000c0c80ffffffb06c00000470007a004a806a00000644807a0172604c001800ec8967000092201043ea000c760124034a8567000006740394834c012800280098826b000014670000160c840000000167000016600000184291600000122811e4842284600000082811e2842284588952830c83000000046600ffb474004a85670000082401d481d481280098826b00001c0c84000000076e00001c5284741ae5ac23c44233c3786000001842b94233c3786000000e283c2000000023c44233c37800000000000000000000000022394233c3784e75",
+   "from_original": [
+    {
+     "at": 316,
+     "off": 699968,
+     "va": "0x400ab240",
+     "len": 12,
+     "sha256": "6a02b1f8547017be102ea9b4321a4a824aeee0b2909fb31d1f9a7fea789d2eef"
+    }
+   ]
+  }
+ ]
+}

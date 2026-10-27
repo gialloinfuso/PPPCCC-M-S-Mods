@@ -1,0 +1,52 @@
+{
+ "os": "Model:Cycles OS 1.13",
+ "version": "2.1.0",
+ "patches": [
+  "00-core.json",
+  "01-mute-solo.json",
+  "02-live-mute.json",
+  "03-hold-mute.json",
+  "04-delay-notes.json",
+  "05-reverb-fx.json",
+  "06-delay-fx.json",
+  "07-strum.json",
+  "08-load-meter.json",
+  "09-groove.json",
+  "10-control-mode.json",
+  "11-trig-select.json",
+  "12-fill2.json"
+ ],
+ "full_set": [
+  "latching-mute",
+  "core",
+  "mute-solo",
+  "live-mute",
+  "hold-mute",
+  "delay-notes",
+  "reverb-fx",
+  "delay-fx",
+  "strum",
+  "load-meter",
+  "groove",
+  "control-mode",
+  "trig-select",
+  "fill2"
+ ],
+ "official_syx_sha256": {
+  "model-cycles_OS1.13.syx": "44fe586269631a0ca7da25a3383fc6733c314809505fc3cc52f1e0ed9800640c"
+ },
+ "bases": [
+  {
+   "name": "official Model:Cycles OS 1.13",
+   "target": "cycles",
+   "section3_sha256": "cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98",
+   "full_set_result_sha256": "995978244f98bd5a429418c098e6d05dadc0dcaf19c28a1218ec6816ad85a729"
+  },
+  {
+   "name": "Model:Cycles OS 1.13 for Model:Samples (Modded-Cycles crossflash.py --to samples)",
+   "target": "samples",
+   "section3_sha256": "b6fbc48f7d7d07cecae3859e07270fa2298f393e8afa2643144bdb4efc317aad",
+   "full_set_result_sha256": "96b8b201b5ecb298b1215a32cf09d2117636a3c6d0586a16bceb734e3e806b05"
+  }
+ ]
+}

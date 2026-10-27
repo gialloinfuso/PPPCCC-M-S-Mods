@@ -1,0 +1,183 @@
+{
+ "id": "fill2",
+ "order": 12,
+ "name": "Fill 2: a second fill with the trig conditions FIL2 / !FIL2",
+ "description": [
+  "Hold PAGE, then also FUNC = Fill 2 instead of Fill 1 (also with the fill latched by TRACK + PAGE).",
+  "New trig conditions FIL2 (plays only in Fill 2) and !FIL2 (plays except in Fill 2), right after FILL / !FILL.",
+  "During Fill 2, FILL trigs are silent and !FILL trigs play. Stored as condition values 64 / 65."
+ ],
+ "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
+ "os": "1.13",
+ "section": 3,
+ "requires": [],
+ "hooks": [
+  "0x40091416",
+  "0x40015ff6",
+  "0x4001605a",
+  "0x4004a4f6",
+  "0x400500a8"
+ ],
+ "memory": [
+  {
+   "va": "0x40189930",
+   "size": 376
+  }
+ ],
+ "symbols": {
+  "EV": "0x40189930",
+  "F2": "0x40189988",
+  "GM": "0x401899a2",
+  "SM": "0x401899e0",
+  "NMAP": "0x40189a06",
+  "BMAP": "0x40189a36",
+  "OWN_N": "0x40189a6c",
+  "OWN_B": "0x40189a74",
+  "S_FIL2": "0x40189a7d",
+  "S_NFIL2": "0x40189a7c"
+ },
+ "params": {
+  "cond_fil2": 64,
+  "cond_nfil2": 65,
+  "fill_now": "0x40fde818",
+  "func_byte": "0x40f95745",
+  "func_bit": 2
+ },
+ "writes": [
+  {
+   "off": 89078,
+   "va": "0x40015ff6",
+   "len": 20,
+   "old_sha256": "21133b4c794606fd02f1ea76b21327367e84c9421bf2d172580920cb578bbdac",
+   "new": "4ef9401899a24e714e714e714e714e714e714e71"
+  },
+  {
+   "off": 89170,
+   "va": "0x40016052",
+   "len": 2,
+   "old_sha256": "f4fe429b77392bd272678ba7d265d4f6ecc18c97d38aaf8bd0eacc250312ed28",
+   "new": "7041"
+  },
+  {
+   "off": 89176,
+   "va": "0x40016058",
+   "len": 2,
+   "old_sha256": "8500e6e3760f30ec85f007695ffcd97decb7a7f3219fe576e66e7fa4e877d73f",
+   "new": "7241"
+  },
+  {
+   "off": 89178,
+   "va": "0x4001605a",
+   "len": 10,
+   "old_sha256": "8e3ddf90085607adb96ccffd99ddd15cd98f0123c174da669ce708dfda266cc7",
+   "new": "4eb9401899e04e714e71"
+  },
+  {
+   "off": 303312,
+   "va": "0x4004a4d0",
+   "len": 2,
+   "old_sha256": "14b4035526671323ac6a5c577b0aeaeaed54aa6c3596660e962437ef9d02a6e8",
+   "new": "7441"
+  },
+  {
+   "off": 303350,
+   "va": "0x4004a4f6",
+   "len": 10,
+   "old_sha256": "ba381dd36d95d2e6d21ecc3e46afb8a78135bc0b91945125fee3961349c14e32",
+   "new": "4eb940189a064e714e71"
+  },
+  {
+   "off": 326822,
+   "va": "0x400500a6",
+   "len": 2,
+   "old_sha256": "8500e6e3760f30ec85f007695ffcd97decb7a7f3219fe576e66e7fa4e877d73f",
+   "new": "7241"
+  },
+  {
+   "off": 326824,
+   "va": "0x400500a8",
+   "len": 6,
+   "old_sha256": "cd6ad9274dfa8679428daa40ef0257d2d97756bf1f2b0a0c60fbfdccececab1d",
+   "new": "4eb940189a36"
+  },
+  {
+   "off": 326874,
+   "va": "0x400500da",
+   "len": 6,
+   "old_sha256": "d9f5e3327fa41ddac8ee2607170249dd15971239e235d5f5867efef67008febe",
+   "new": "70f6d0827214"
+  },
+  {
+   "off": 326924,
+   "va": "0x4005010c",
+   "len": 2,
+   "old_sha256": "a90648cc7894b37e690d6b58d5226d995aae8869a79d3edc2136e6dfdc108dda",
+   "new": "7009"
+  },
+  {
+   "off": 593942,
+   "va": "0x40091416",
+   "len": 8,
+   "old_sha256": "6fe6e4cae4a95f0acb550b57ba8d5e92d0af0bb2df080807c9f5d3f8596f0cec",
+   "new": "4ef9401899304e71"
+  },
+  {
+   "off": 708392,
+   "va": "0x400ad328",
+   "len": 4,
+   "old_sha256": "d4419b5048587601f2e1419383b8081162e9486fd7b0ada580c5f4a55c2078c3",
+   "new": "40172220"
+  },
+  {
+   "off": 1105172,
+   "va": "0x4010e114",
+   "len": 4,
+   "old_sha256": "ad60013b04e0d4f0ca8b6c857383f9c2d62f2d280ca32192b82529562693a446",
+   "new": "00004100"
+  },
+  {
+   "off": 1611056,
+   "va": "0x40189930",
+   "len": 338,
+   "old_sha256": "f71046a0f88f978364a32b6fc1777ec2de1d76f0a78bb086721df881d62e4f00",
+   "new": "7401b480650000146100004e6700001c7401b5804ef94009161a7440b4806700001e7441b4806700002400000000650000084ef94009141e4ef940091622610000187001b7804ef94009161a6100000a20034ef94009161a76004a3940fde8186700000e163940f95745e48b7401c6824e75000000000000000000000000000000000000000049c07202b2806e00001c723fb2806d00000854806000000e7241b2806d000006723e90814ef94001600a7002b0816e0000147003b0816d00000a703ed280600000045581000000000000000000004e750c80000000026d00001c0c80000000036e0000105580e58841f940189a6cd1c04e755580e588000000000000d1c04e750c82000000026d0000260c82000000416200001c0c82000000036e00000a41f940189a6c4e7541f940108f4c4e750000000000004e7540189a7d40189a7c40189a7d40189a7d2146494c3200",
+   "from_original": [
+    {
+     "at": 42,
+     "off": 593942,
+     "va": "0x40091416",
+     "len": 4,
+     "sha256": "026ce3a282ec0b1e67437289bb5e267a6d3261ed744e5d2223c53a0affa8ff9f"
+    },
+    {
+     "at": 114,
+     "off": 89078,
+     "va": "0x40015ff6",
+     "len": 20,
+     "sha256": "21133b4c794606fd02f1ea76b21327367e84c9421bf2d172580920cb578bbdac"
+    },
+    {
+     "at": 202,
+     "off": 89178,
+     "va": "0x4001605a",
+     "len": 10,
+     "sha256": "8e3ddf90085607adb96ccffd99ddd15cd98f0123c174da669ce708dfda266cc7"
+    },
+    {
+     "at": 252,
+     "off": 303350,
+     "va": "0x4004a4f6",
+     "len": 6,
+     "sha256": "d15e03cf0ab70bfb5ce0f217395d8904ed35edc5efee9864d90d89a731d79dce"
+    },
+    {
+     "at": 308,
+     "off": 326824,
+     "va": "0x400500a8",
+     "len": 6,
+     "sha256": "cd6ad9274dfa8679428daa40ef0257d2d97756bf1f2b0a0c60fbfdccececab1d"
+    }
+   ]
+  }
+ ]
+}
