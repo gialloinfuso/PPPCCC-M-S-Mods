@@ -1,4 +1,4 @@
-# PPPCCC M:S Mods
+# PPPCCC M:C Mods
 
 Extra features for the **Elektron Model:Cycles OS 1.13**, the official firmware anyone can download from Elektron.
 They also run on a **Model:Samples** that runs the Cycles OS. You get solo and better mutes, tempo-synced delay notes,
