@@ -31,6 +31,9 @@ expected originals and writes a development JSON with the original bytes (`old`)
 | 10 control-mode | `g2_control.py` | |
 | 11 trig-select | `g2_trigselect.py` | |
 | 12 fill2 | `g2_fill2.py` | |
+| 13 track-filter | `g2_trackfilter.py` | `v2/cfemac.py` (EMAC instructions) |
+| 14 lfo-amount | `g2_lfoamount.py` | |
+| 15 direct-jump | `g2_directjump.py` | |
 
 `common.py` holds the firmware addresses, the pattern-header layout and the core's slot numbers. `gen_all.py` runs
 every generator, checks that the whole set can be applied together (writes may only overlap a required patch) and

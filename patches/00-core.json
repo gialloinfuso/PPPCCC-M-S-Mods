@@ -4,7 +4,8 @@
  "name": "Core: shared services for the modular mods",
  "description": [
   "Encoder gesture dispatcher with one slot per mod, key slots for SETTINGS press/release, firmware-style value popups,",
-  "SETTINGS as a modifier, slower effect selection, pattern storage for header bytes 40..63. Required by mods 05..11."
+  "SETTINGS as a modifier, slower effect selection, pattern storage for header bytes 40..63, sound slots for extra",
+  "parameters (k 23..32: saving, p-locks, LFO / velocity destinations). Required by mods 05..11, 13 and 14."
  ],
  "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
  "os": "1.13",
@@ -16,7 +17,13 @@
   "0x4001c564",
   "0x4001c5bc",
   "0x4005b4b0",
-  "0x4006155e"
+  "0x4006155e",
+  "0x4005aecc",
+  "0x4005afa0",
+  "0x4005b054",
+  "0x4005aa34",
+  "0x4005b998",
+  "0x4005baca"
  ],
  "memory": [
   {
@@ -30,6 +37,14 @@
   {
    "va": "0x4015c044",
    "size": 720
+  },
+  {
+   "va": "0x401835b8",
+   "size": 272
+  },
+  {
+   "va": "0x40184808",
+   "size": 192
   },
   {
    "va": "0x4a33c380",
@@ -63,7 +78,17 @@
   "LS": "0x4018f53c",
   "C13R": "0x4018f546",
   "HL": "0x4018f58a",
-  "HI": "0x4018f5d6"
+  "HI": "0x4018f5d6",
+  "LD": "0x401835b8",
+  "SV2": "0x401835d4",
+  "SV1": "0x401835f0",
+  "LDP": "0x4018360c",
+  "SVP": "0x40183640",
+  "CALLS": "0x40183662",
+  "DST": "0x401836a2",
+  "CONV": "0x4018488c",
+  "PTAB": "0x40184808",
+  "SSLOTS": "0x401848b4"
  },
  "params": {
   "nslot": 8,
@@ -74,7 +99,8 @@
    "load-meter": 3,
    "groove": 4,
    "control-mode": 5,
-   "trig-select": 6
+   "trig-select": 6,
+   "track-filter": 7
   },
   "vars": "0x4a33c380",
   "nkslot": 2,
@@ -82,6 +108,11 @@
    "control-mode": 0
   },
   "ctrl_abs": 90,
+  "nsslot": 4,
+  "sslots": {
+   "track-filter": 0,
+   "lfo-amount": 1
+  },
   "slow": [
    4,
    54067200
@@ -118,11 +149,53 @@
    "new": "4eb94018f546"
   },
   {
+   "off": 370228,
+   "va": "0x4005aa34",
+   "len": 6,
+   "old_sha256": "600476b79e6941095c26cff35f0fee8db577d2caf26d0f88671af6b1598ffa03",
+   "new": "4ef94018488c"
+  },
+  {
+   "off": 371404,
+   "va": "0x4005aecc",
+   "len": 8,
+   "old_sha256": "b68bc7d23c230258939a138565f6ce0857c8519234b2e5f45b2120f58d4b44db",
+   "new": "4ef9401835b84e71"
+  },
+  {
+   "off": 371616,
+   "va": "0x4005afa0",
+   "len": 8,
+   "old_sha256": "b68bc7d23c230258939a138565f6ce0857c8519234b2e5f45b2120f58d4b44db",
+   "new": "4ef9401835d44e71"
+  },
+  {
+   "off": 371796,
+   "va": "0x4005b054",
+   "len": 8,
+   "old_sha256": "b68bc7d23c230258939a138565f6ce0857c8519234b2e5f45b2120f58d4b44db",
+   "new": "4ef9401835f04e71"
+  },
+  {
    "off": 372912,
    "va": "0x4005b4b0",
    "len": 6,
    "old_sha256": "ee28f31fe8e35208eaefb6360d0d28dc613f50670d545cf89908a49f66d0d7d2",
    "new": "4eb94018f58a"
+  },
+  {
+   "off": 374168,
+   "va": "0x4005b998",
+   "len": 4,
+   "old_sha256": "ff4a85b286c43f8975e39f4a7a75eba1d10f2b9de9e131957b2c809077b75045",
+   "new": "40184808"
+  },
+  {
+   "off": 374474,
+   "va": "0x4005baca",
+   "len": 4,
+   "old_sha256": "ff4a85b286c43f8975e39f4a7a75eba1d10f2b9de9e131957b2c809077b75045",
+   "new": "40184808"
   },
   {
    "off": 397662,
@@ -153,6 +226,20 @@
    "new": "40172220"
   },
   {
+   "off": 710720,
+   "va": "0x400adc40",
+   "len": 4,
+   "old_sha256": "307ef7f45eecd8041a54c9f115eb24c69b0212f46383449c626f6a5348ce69f0",
+   "new": "4014b364"
+  },
+  {
+   "off": 711388,
+   "va": "0x400adedc",
+   "len": 4,
+   "old_sha256": "f6adeacce77b967f8bbd8231ccf033a0d0f78e2b74c7f2250c2d49af69c7db5b",
+   "new": "4016bfc8"
+  },
+  {
    "off": 745524,
    "va": "0x400b6434",
    "len": 4,
@@ -172,6 +259,52 @@
      "va": "0x40076c8a",
      "len": 4,
      "sha256": "0e7b841cf6533072ae84ce28c9c0b4d6696e43ad788dfbdc520c3e63f974ec74"
+    }
+   ]
+  },
+  {
+   "off": 1585592,
+   "va": "0x401835b8",
+   "len": 262,
+   "old_sha256": "3bd7025fae55f2efaa06c9d2a7e7f4374de9a0e05f896620ecaf810585c3f885",
+   "new": "2f2f00082f2f000848794018360c00000000000000004ef94005aed42f2f00082f2f000848794018364000000000000000004ef94005afa82f2f00082f2f000848794018364000000000000000004ef94005b05c2257206f00042e804269001471a800526100008467000008e1883340001c71a800536100007267000006234000587200600000242057226f00042e8071a9001c610000541140005220290058610000481140005372014fefffec48d71c0c240124482649760041f9401848b420303c006700000c2840204a224b22024e9452837004b0836600ffe04cd71c0c4fef00142017508f4e750480000000170c80000000096200000a0680000000174e7570004e75",
+   "from_original": [
+    {
+     "at": 14,
+     "off": 371404,
+     "va": "0x4005aecc",
+     "len": 8,
+     "sha256": "b68bc7d23c230258939a138565f6ce0857c8519234b2e5f45b2120f58d4b44db"
+    },
+    {
+     "at": 42,
+     "off": 371616,
+     "va": "0x4005afa0",
+     "len": 8,
+     "sha256": "b68bc7d23c230258939a138565f6ce0857c8519234b2e5f45b2120f58d4b44db"
+    },
+    {
+     "at": 70,
+     "off": 371796,
+     "va": "0x4005b054",
+     "len": 8,
+     "sha256": "b68bc7d23c230258939a138565f6ce0857c8519234b2e5f45b2120f58d4b44db"
+    }
+   ]
+  },
+  {
+   "off": 1590280,
+   "va": "0x40184808",
+   "len": 188,
+   "old_sha256": "51c61b8cb169acecb674b8eeedec7bad8da2ac4720fe3e9cbd561669284e6b4e",
+   "new": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000018000000190000001a0000001b0000001c0000001d0000001e0000001f00000020000000210c8000000017620000084ef94005aa460c80000000216200000a53804ef94005aa504ef94005aa3a00000000000000000000000000000000",
+   "from_original": [
+    {
+     "at": 0,
+     "off": 1108556,
+     "va": "0x4010ee4c",
+     "len": 92,
+     "sha256": "5f23d18e27f87c5ef2199fc336587eab18a9cabfe01f5acdfdb798ce7fdab422"
     }
    ]
   },

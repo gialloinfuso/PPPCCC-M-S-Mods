@@ -7,9 +7,12 @@
     firmware container.
   - Neither file is copied into this repository.
 - **Modded-Cycles** by 18nelli18 and contributors (https://github.com/18nelli18/Modded-Cycles), MIT.
-  - Firmware research notes (OS 1.13 addresses, the chord engine, the pattern header, the audio load measurement).
+  - Firmware research notes (OS 1.13 addresses, the chord engine, the pattern header, the audio load measurement;
+    for 13 track-filter the audio hook after Volume + Distortion, the free descriptors 1–4 and their sound record bytes
+    (notes/47); for 14 lfo-amount the LFO call and its depth word (notes/56)). The code of 13 and 14 is my own.
   - The method of reusing unused sprite masks as free code memory (`tools/sprites.py`).
-  - The emulator rigs used by the tests (`tools/emu/mcengine.py`, `seqrig.py`, the key-chain rig from `test_trig_hold.py`).
+  - The emulator rigs used by the tests (`tools/emu/mcengine.py`, `seqrig.py`, the exact EMAC emulation `emac.py`, the
+    key-chain rig from `test_trig_hold.py`).
   - The cross-flash that runs the Cycles OS on a Model:Samples (`tools/crossflash.py --to samples`).
   - All of these are used from your own checkout and are not copied here.
 - **elektron-firmware-tool** by Marcel Bierling (https://github.com/mischa85/elektron-firmware-tool), MIT. The firmware

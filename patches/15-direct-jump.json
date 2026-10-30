@@ -1,0 +1,226 @@
+{
+ "id": "direct-jump",
+ "order": 15,
+ "name": "Direct jump: change the pattern at once and keep the position",
+ "description": [
+  "PATTERN, then FUNC + a trig key = the new pattern takes over within the next steps and plays on from the",
+  "position the old one was at. The pattern selection stays open for more jumps. A trig key alone = normal change."
+ ],
+ "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
+ "os": "1.13",
+ "section": 3,
+ "requires": [],
+ "hooks": [
+  "0x40020c84",
+  "0x4005563e",
+  "0x40055898",
+  "0x40020aa6",
+  "0x40024b12",
+  "0x40024bd0",
+  "0x40020df0"
+ ],
+ "memory": [
+  {
+   "va": "0x4015943c",
+   "size": 192
+  },
+  {
+   "va": "0x40168a84",
+   "size": 192
+  },
+  {
+   "va": "0x4014af84",
+   "size": 108
+  },
+  {
+   "va": "0x4014b05c",
+   "size": 108
+  },
+  {
+   "va": "0x4015943c",
+   "size": 16,
+   "ram": true,
+   "use": "jump request, fix flag, saved track steps, keep-open flag"
+  }
+ ],
+ "symbols": {
+  "DJK": "0x40168af8",
+  "DJS": "0x4015944c",
+  "DJF": "0x40168a84",
+  "FK": "0x4014af84",
+  "FO": "0x4014afb8",
+  "OT": "0x4014b05c",
+  "RL": "0x4014b090",
+  "KEEP": "0x4015944a",
+  "REQ": "0x4015943c",
+  "FIX": "0x40159440",
+  "SAVE": "0x40159444"
+ },
+ "params": {
+  "magic": "0x444a4d50"
+ },
+ "writes": [
+  {
+   "off": 132774,
+   "va": "0x40020aa6",
+   "len": 6,
+   "old_sha256": "5d4b15b3b1405e54fae167d69ba86750fac2ff84764f27fa400396d893bd7a23",
+   "new": "4ef94014af84"
+  },
+  {
+   "off": 133252,
+   "va": "0x40020c84",
+   "len": 8,
+   "old_sha256": "7f0bc1cbb3f557b6616dd07e7b2568fd7b4b176215b6dec7fc152ac1d9d8fb5b",
+   "new": "4ef940168af84e71"
+  },
+  {
+   "off": 133616,
+   "va": "0x40020df0",
+   "len": 6,
+   "old_sha256": "3627a910beef07b4b6e9af0c126a851478dd8f36148ce7169824ded3868f9a98",
+   "new": "4ef94014b090"
+  },
+  {
+   "off": 149266,
+   "va": "0x40024b12",
+   "len": 6,
+   "old_sha256": "f91fe885810e5a81e95a9795a75e3838272cecaa85c7bdebd06ba4602758d885",
+   "new": "4ef94014afb8"
+  },
+  {
+   "off": 149456,
+   "va": "0x40024bd0",
+   "len": 8,
+   "old_sha256": "6a1585e8dae2264f0ba0da30904344f3a876886a5ec1ee3ca23a59bc985e5115",
+   "new": "4ef94014b05c4e71"
+  },
+  {
+   "off": 348734,
+   "va": "0x4005563e",
+   "len": 6,
+   "old_sha256": "a2f1b7b4615108ce93e9d9fb006e40045a5fe8e37256caf0a6060d78671f3508",
+   "new": "4ef94015944c"
+  },
+  {
+   "off": 349336,
+   "va": "0x40055898",
+   "len": 6,
+   "old_sha256": "5a266c7d2608b261d2f19f942ffc908a092779c46ea63757febb96ee1964d9bc",
+   "new": "4ef940168a84"
+  },
+  {
+   "off": 726976,
+   "va": "0x400b1bc0",
+   "len": 4,
+   "old_sha256": "bc55d7e836ef35a83536388d8ef086b2d9f4f5d4f1a363b8274d83753b43959d",
+   "new": "4014b364"
+  },
+  {
+   "off": 749540,
+   "va": "0x400b73e4",
+   "len": 4,
+   "old_sha256": "c4654fa8a426427af4a18a0ee341fd17cbce58c5a52d2d6f8550bde5e18dd882",
+   "new": "4014b364"
+  },
+  {
+   "off": 764968,
+   "va": "0x400bb028",
+   "len": 4,
+   "old_sha256": "d328433ce7b365efce00f312c8691fff2c27f31437bae697edca2aef67ad3b46",
+   "new": "4014a550"
+  },
+  {
+   "off": 764996,
+   "va": "0x400bb044",
+   "len": 4,
+   "old_sha256": "55a67ca59b9f514b30c302486a4818678ef9e0b409fd0e60c7fa22a09bb272bf",
+   "new": "4014a550"
+  },
+  {
+   "off": 1354628,
+   "va": "0x4014af84",
+   "len": 80,
+   "old_sha256": "9b196f80a89cf84ee57bdcca2b082e3712eab48a0ec7fe6c988fb4957c280cf4",
+   "new": "0c8000000001660000204eb9400cf9a82f004eb94006bb18588f4a00670000084ef940020d5e70010000000000004ef940020aac0c8000000001660000084ef940024ba20000000000004ef940024b18",
+   "from_original": [
+    {
+     "at": 40,
+     "off": 132774,
+     "va": "0x40020aa6",
+     "len": 6,
+     "sha256": "5d4b15b3b1405e54fae167d69ba86750fac2ff84764f27fa400396d893bd7a23"
+    },
+    {
+     "at": 68,
+     "off": 149266,
+     "va": "0x40024b12",
+     "len": 6,
+     "sha256": "f91fe885810e5a81e95a9795a75e3838272cecaa85c7bdebd06ba4602758d885"
+    }
+   ]
+  },
+  {
+   "off": 1354844,
+   "va": "0x4014b05c",
+   "len": 94,
+   "old_sha256": "0c86dc4759b44de9afe81441cc3ed2b9a997be7fd1911f54ff555de64ab42b86",
+   "new": "2f024eb940072490588f4a00670000124ab940a7883c670000084ef940024be642794015944a00000000000000004ef940024bd84a794015944a6700000e42794015944a4ef940020e0400000000660000084ef940020df64ef940020e04",
+   "from_original": [
+    {
+     "at": 38,
+     "off": 149456,
+     "va": "0x40024bd0",
+     "len": 8,
+     "sha256": "6a1585e8dae2264f0ba0da30904344f3a876886a5ec1ee3ca23a59bc985e5115"
+    },
+    {
+     "at": 74,
+     "off": 133616,
+     "va": "0x40020df0",
+     "len": 4,
+     "sha256": "8313a792a9311278b25838a914f6f5332485c9150a0bf384bcefeb570ded9831"
+    }
+   ]
+  },
+  {
+   "off": 1413180,
+   "va": "0x4015943c",
+   "len": 172,
+   "old_sha256": "576ecd3d6e4773f7c6e39176455d7b34c0bdd8f973a83be13af35206d972b6a8",
+   "new": "000000000000000000000000000000004fefffec48d7030720394015943c0c80444a4d506600007242b94015943c207940a7863c200867000060203940a7886023c040159444303940a7886433c040159448203940a78840732877cb538167000012736877c64a816f0000084c410002200223c040a788a070ff23c040a788a4700123c040a7892023c0401594402f084eb94005419e588f4cd703074fef00140000000000004ef940055644",
+   "from_original": [
+    {
+     "at": 160,
+     "off": 348734,
+     "va": "0x4005563e",
+     "len": 6,
+     "sha256": "a2f1b7b4615108ce93e9d9fb006e40045a5fe8e37256caf0a6060d78671f3508"
+    }
+   ]
+  },
+  {
+   "off": 1476228,
+   "va": "0x40168a84",
+   "len": 192,
+   "old_sha256": "8b035231c063ee37a3fe38e112113513c9e7d59940b6ad21863765cca8d7356d",
+   "new": "4fefffe448d7070f43f9401594404a916700004e4291207940a7887c43f940a788bc45f9401594447600732877cb538167000006776877c6719a220366000006736802c94a816f0000084c410002328241e802d25489b3fc40a788c86600ffda4cd7070f4fef001c0000000000004ef94005589e0000000000000000588f4a00670000384ab940a7883c6700002e70011540007c33c04015944a2f2effd02f0a4eb94002037c508f203c444a4d5023c04015943c4ef940020d5e4ef940020c94",
+   "from_original": [
+    {
+     "at": 104,
+     "off": 349336,
+     "va": "0x40055898",
+     "len": 6,
+     "sha256": "5a266c7d2608b261d2f19f942ffc908a092779c46ea63757febb96ee1964d9bc"
+    },
+    {
+     "at": 116,
+     "off": 133252,
+     "va": "0x40020c84",
+     "len": 8,
+     "sha256": "7f0bc1cbb3f557b6616dd07e7b2568fd7b4b176215b6dec7fc152ac1d9d8fb5b"
+    }
+   ]
+  }
+ ]
+}

@@ -1,6 +1,6 @@
 {
  "os": "Model:Cycles OS 1.13",
- "version": "2.1.0",
+ "version": "2.2.0",
  "patches": [
   "00-core.json",
   "01-mute-solo.json",
@@ -14,7 +14,10 @@
   "09-groove.json",
   "10-control-mode.json",
   "11-trig-select.json",
-  "12-fill2.json"
+  "12-fill2.json",
+  "13-track-filter.json",
+  "14-lfo-amount.json",
+  "15-direct-jump.json"
  ],
  "full_set": [
   "latching-mute",
@@ -30,7 +33,10 @@
   "groove",
   "control-mode",
   "trig-select",
-  "fill2"
+  "fill2",
+  "track-filter",
+  "lfo-amount",
+  "direct-jump"
  ],
  "official_syx_sha256": {
   "model-cycles_OS1.13.syx": "44fe586269631a0ca7da25a3383fc6733c314809505fc3cc52f1e0ed9800640c"
@@ -40,13 +46,13 @@
    "name": "official Model:Cycles OS 1.13",
    "target": "cycles",
    "section3_sha256": "cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98",
-   "full_set_result_sha256": "995978244f98bd5a429418c098e6d05dadc0dcaf19c28a1218ec6816ad85a729"
+   "full_set_result_sha256": "af8244f16c2f416fe503567c7de6c20a33e2849bafddb9ad09b94efe915ced38"
   },
   {
    "name": "Model:Cycles OS 1.13 for Model:Samples (Modded-Cycles crossflash.py --to samples)",
    "target": "samples",
    "section3_sha256": "b6fbc48f7d7d07cecae3859e07270fa2298f393e8afa2643144bdb4efc317aad",
-   "full_set_result_sha256": "96b8b201b5ecb298b1215a32cf09d2117636a3c6d0586a16bceb734e3e806b05"
+   "full_set_result_sha256": "a2086b329ea9ebac2587a2a2413004928583a24804d4f0f37a74688c188417e4"
   }
  ]
 }

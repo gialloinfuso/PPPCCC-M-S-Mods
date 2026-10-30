@@ -29,7 +29,14 @@ Dienste (Adressen in symbols):
         sich das Menue nicht. Slots: control-mode 0.
   CTRL_MODE 0x404e9b5d (Einstellungsblock): == 0x5a CONTROL ALL absolut, sonst relativ (= Firmware); geschrieben von
         control-mode, gelesen von allen, die mehrere Werte auf einmal aendern (control-mode, groove).
-Speicher: Masken 0x4018f4b4 (CED, SLOTS, Tasten, GEST, HL, HI), 0x4018dba8 (SLOW, MODESW), 0x4015c044 (OVS, OVT, NPD).
+  SND / SSLOTS (seit Patch 13/14): Sound laden / speichern (Haken 0x4005aecc, 0x4005afa0, 0x4005b054, Prolog nachgespielt)
+        ruft die Sound-Slots (a0 Satz, a1 Sound, d1 = 0 Laden / 1 Speichern; duerfen d0/d1/a0/a1 aendern). Der Core selbst
+        legt LFO- und Velocity-Ziel k 23..32 in Satz +82 / +83 ab (die Firmware kann sie nicht speichern) und loescht beim
+        Laden k0 (die Firmware legt dort Satz-Platz 18 = +64 ab).
+  p-locks k 23..32: Tabelle k -> Index (PTAB, 0x4005b998 / 0x4005baca; Eintraege 0..22 aus dem Image kopiert, dann 24..33)
+        und Index -> k (Haken 0x4005aa34: 24..33 -> 23..32). Nach Modded-Cycles notes/47 (MIT); eigener Code.
+Speicher: Masken 0x4018f4b4 (CED, SLOTS, Tasten, GEST, HL, HI), 0x4018dba8 (SLOW, MODESW), 0x4015c044 (OVS, OVT, NPD),
+  0x401835b8 (SND), 0x40184808 (PTAB, CONV, SSLOTS).
 RAM: VARS 0x4a33c380 (40 B), ACC 0x4a33c3c0 (12 B).
 Aufruf: g2_core.py [out.json]
 """
@@ -37,8 +44,14 @@ import struct, sys
 from common import *                 # noqa: F401,F403
 import common as C
 
-M_C1, M_C2, M_C3 = 0x4018F4B4, 0x4018DBA8, 0x4015C044
-SIZE = {M_C1: 376, M_C2: 376, M_C3: 720}
+M_C1, M_C2, M_C3, M_C4, M_C5 = 0x4018F4B4, 0x4018DBA8, 0x4015C044, 0x401835B8, 0x40184808
+SIZE = {M_C1: 376, M_C2: 376, M_C3: 720, M_C4: 272, M_C5: 192}
+# Sound laden / speichern (v2, v1): Prolog lea -12(sp),sp ; movem.l a2-a4,(sp) (8 B) -> jmp; Fortsetzung + 8
+PRO_CK = (8, 'b68bc7d23c230258939a138565f6ce0857c8519234b2e5f45b2120f58d4b44db')
+LD_HOOK, SV2_HOOK, SV1_HOOK = 0x4005AECC, 0x4005AFA0, 0x4005B054
+CONV_HOOK, CONV_CK = 0x4005AA34, (6, '600476b79e6941095c26cff35f0fee8db577d2caf26d0f88671af6b1598ffa03')
+CONV_TAB, CONV_RET, CONV_ZERO = 0x4005AA46, 0x4005AA50, 0x4005AA3A
+PTAB_REFS, PTAB_ORIG = (0x4005B998, 0x4005BACA), 0x4010EE4C
 DUR = 202752000                      # 1.5 s in Zeitgeber-Ticks
 OMAGIC = 0x4F564C32                  # 'OVL2'
 VC_DIRTY = 0x20
@@ -244,10 +257,74 @@ def build_c3():
     return code, dict(a.lab)
 
 
+def build_c5():
+    """PTAB (k 0..32 -> p-lock-Index), CONV, SSLOTS"""
+    code = bytearray(orig_span(M_C5, PTAB_ORIG, 23 * 4))
+    code += struct.pack('>10I', *range(24, 34))
+    a = A(M_C5 + len(code)); w, l = a.w, a.l32
+    a.label('CONV')                             # Index d0 -> k (Tracks 0..5)
+    w(0x0C80); l(23); a.bcc(HI, 'cv')
+    w(0x4EF9); l(CONV_TAB)
+    a.label('cv')
+    w(0x0C80); l(33); a.bcc(HI, 'cz')
+    w(0x5380, 0x4EF9); l(CONV_RET)
+    a.label('cz')
+    w(0x4EF9); l(CONV_ZERO)
+    cv = a.done(); check_cf(cv, a.org)
+    code += cv
+    ss = M_C5 + len(code); code += bytes(4 * C.NSSLOT)
+    return bytes(code), dict(a.lab, PTAB=M_C5, SSLOTS=ss)
+
+
+def build_c4(ss):
+    a = A(M_C4); w, l = a.w, a.l32
+    for name, hook, post in (('LD', LD_HOOK, 'LDP'), ('SV2', SV2_HOOK, 'SVP'), ('SV1', SV1_HOOK, 'SVP')):
+        a.label(name)
+        w(0x2F2F, 0x0008, 0x2F2F, 0x0008, 0x4879); l(0); a.fix.append((len(a.b) - 4, post + '@abs'))
+        a.orig(hook, 8)                         # verschobener Prolog der Firmware
+        w(0x4EF9); l(hook + 8)
+    a.label('LDP')                              # nach dem Laden: 0(sp) Sound, 4(sp) Satz
+    w(0x2257, 0x206F, 0x0004, 0x2E80)
+    w(0x4269, 0x0014)                           # k0 = 0
+    w(0x71A8, 0x0052); a.bcc(BSR, 'DST'); a.bcc(EQ, 'l1'); w(0xE188, 0x3340, 0x001C)   # LFO-Ziel (Wort +28 = k << 8)
+    a.label('l1')
+    w(0x71A8, 0x0053); a.bcc(BSR, 'DST'); a.bcc(EQ, 'l2'); w(0x2340, 0x0058)           # Velocity-Ziel (+88)
+    a.label('l2')
+    w(0x7200); a.bcc(BRA, 'CALLS')
+    a.label('SVP')                              # nach dem Speichern: 0(sp) Satz, 4(sp) Sound
+    w(0x2057, 0x226F, 0x0004, 0x2E80)
+    w(0x71A9, 0x001C); a.bcc(BSR, 'DST'); w(0x1140, 0x0052)
+    w(0x2029, 0x0058); a.bcc(BSR, 'DST'); w(0x1140, 0x0053)
+    w(0x7201)
+    a.label('CALLS')                            # a0 Satz, a1 Sound, d1 Art: alle Sound-Slots
+    w(0x4FEF, 0xFFEC, 0x48D7, 0x1C0C, 0x2401, 0x2448, 0x2649, 0x7600)
+    a.label('cl')
+    w(0x41F9); l(ss); w(0x2030, 0x3C00); a.bcc(EQ, 'nx')
+    w(0x2840, 0x204A, 0x224B, 0x2202, 0x4E94)
+    a.label('nx')
+    w(0x5283, 0x7000 | C.NSSLOT, 0xB083); a.bcc(NE, 'cl')
+    w(0x4CD7, 0x1C0C, 0x4FEF, 0x0014)
+    w(0x2017, 0x508F, 0x4E75)
+    a.label('DST')                              # d0 = d0, wenn k 23..32, sonst 0 (mit Flags)
+    w(0x0480); l(C.K_EXT0); w(0x0C80); l(C.K_EXT1 - C.K_EXT0); a.bcc(HI, 'dz')
+    w(0x0680); l(C.K_EXT0); w(0x4E75)
+    a.label('dz')
+    w(0x7000, 0x4E75)
+    fixa = [(p_, n[:-4]) for p_, n in a.fix if n.endswith('@abs')]
+    a.fix = [(p_, n) for p_, n in a.fix if not n.endswith('@abs')]
+    code = bytearray(a.done())
+    for p_, n in fixa:
+        code[p_:p_ + 4] = struct.pack('>I', a.lab[n])
+    check_cf(bytes(code), M_C4)
+    return bytes(code), a.lab
+
+
 def build():
     c2, l2 = build_c2(); c1, l1 = build_c1(l2['KCALL']); c3, l3 = build_c3()
-    lab = {}; lab.update(l1); lab.update(l2); lab.update(l3)
-    return {M_C1: c1, M_C2: c2, M_C3: c3}, lab
+    c5, l5 = build_c5(); c4, l4 = build_c4(l5['SSLOTS'])
+    lab = {}
+    for x in (l1, l2, l3, l4, l5): lab.update(x)
+    return {M_C1: c1, M_C2: c2, M_C3: c3, M_C4: c4, M_C5: c5}, lab
 
 
 def tweak(img):
@@ -262,11 +339,19 @@ def tweak(img):
     W.hook(K_HOOK_R, K_ORIG_R, jsr(lab['C13R']))
     W.hook(L_HOOK, L_ORIG, jsr(lab['HL']))
     W.hook(I_HOOK, I_ORIG, jsr(lab['HI']))
-    keys = ('CED', 'SLOTS', 'KCALL', 'KSLOTS', 'GEST', 'SLOW', 'MODESW', 'OVS', 'OVT', 'NPD', 'C13A', 'LS', 'C13R', 'HL', 'HI')
+    for va, nm in ((LD_HOOK, 'LD'), (SV2_HOOK, 'SV2'), (SV1_HOOK, 'SV1')):
+        W.hook(va, PRO_CK, jmp(lab[nm]) + bytes.fromhex('4e71'))
+    W.hook(CONV_HOOK, CONV_CK, jmp(lab['CONV']))
+    for va in PTAB_REFS:
+        W.hook(va, struct.pack('>I', PTAB_ORIG), struct.pack('>I', lab['PTAB']))
+    keys = ('CED', 'SLOTS', 'KCALL', 'KSLOTS', 'GEST', 'SLOW', 'MODESW', 'OVS', 'OVT', 'NPD', 'C13A', 'LS', 'C13R', 'HL', 'HI',
+            'LD', 'SV2', 'SV1', 'LDP', 'SVP', 'CALLS', 'DST', 'CONV', 'PTAB', 'SSLOTS')
     return patch('core', 0, 'Core: shared services for the modular mods',
                  ["Encoder gesture dispatcher, firmware-style value popups, SETTINGS as a modifier, slow effect selection,",
-                  "pattern storage for header bytes 40..63. Erzeugt von v2/g2_core.py."], W,
-                 hooks=[f"{x:#x}" for x in (C.H_HOOK, RENDER_HOOK, K_HOOK_A, K_HOOK_L, K_HOOK_R, L_HOOK, I_HOOK)],
+                  "pattern storage for header bytes 40..63, sound slots and p-locks for extra parameters (k 23..32).",
+                  "Erzeugt von v2/g2_core.py."], W,
+                 hooks=[f"{x:#x}" for x in (C.H_HOOK, RENDER_HOOK, K_HOOK_A, K_HOOK_L, K_HOOK_R, L_HOOK, I_HOOK, LD_HOOK, SV2_HOOK,
+                                             SV1_HOOK, CONV_HOOK) + PTAB_REFS],
                  memory=[{"va": f"{V:#x}", "size": 40, "ram": True, "use": "popup + key state (VARS)"},
                          {"va": f"{C.ACC:#x}", "size": 12, "ram": True, "use": "detent counter (SLOW)"}],
                  settings=[f"{C.CTRL_MODE:#x} (control mode, written by control-mode: {C.CTRL_ABS:#x} absolute, anything else relative)"],
@@ -274,6 +359,7 @@ def tweak(img):
                  symbols={k: f"{lab[k]:#x}" for k in keys},
                  params={"nslot": C.NSLOT, "slots": {k: v for k, v in C.SLOT.items()}, "vars": f"{V:#x}",
                          "nkslot": C.NKSLOT, "kslots": dict(C.KSLOT), "ctrl_abs": C.CTRL_ABS,
+                         "nsslot": C.NSSLOT, "sslots": dict(C.SSLOT),
                          "slow": [SLOW_N, SLOW_T], "dur": DUR})
 
 
@@ -284,6 +370,13 @@ def sym():
     if SYM is None:
         _, lab = build(); SYM = lab
     return SYM
+
+
+def sslot_write(W, pid, handler):
+    """Sound-Handler der Mod (a0 Satz, a1 Sound, d1 = 0 Laden / 1 Speichern) in ihren Sound-Slot."""
+    at = sym()['SSLOTS'] + 4 * C.SSLOT[pid]
+    assert bytes(W.base[at - BASE:at - BASE + 4]) == bytes(4), f"Sound-Slot {pid} nicht frei (Core fehlt?)"
+    W.put(at, struct.pack('>I', handler))
 
 
 def kslot_write(W, pid, handler):

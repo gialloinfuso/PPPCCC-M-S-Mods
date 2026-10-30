@@ -13,6 +13,9 @@ All controls of the full build on one page. Every patch has its own page with de
 | **PAGE** (held) + **FUNC** | Fill 2 instead of Fill 1. |
 | **MACHINE** + Swing | Humanize velocity. |
 | **FUNC** + Swing | Groove selection. |
+| **RETRIG** + **GATE** | Track filter mode on (tap RETRIG = off). |
+| **RETRIG** + LFO SPEED | LFO Amount. |
+| **PATTERN**, then **FUNC** + trig key | Direct jump to that pattern. |
 
 A short press of SETTINGS still opens the settings, FUNC + SETTINGS still quick-saves, and holding SETTINGS alone
 still saves the project (on release now). After a SETTINGS gesture neither the menu nor the save happens. MACHINE
@@ -84,6 +87,27 @@ Every new value shows a popup in the firmware's style while you turn.
 | fill latched with **TRACK + PAGE**, then hold **FUNC** | Fill 2 while FUNC is held | [12](patches/12-fill2.md) |
 | trig condition **FIL2** / **!FIL2** (right after FILL / !FILL) | plays only in Fill 2 / plays except in Fill 2; during Fill 2, FILL is silent and !FILL plays | [12](patches/12-fill2.md) |
 
+## Track filter and LFO amount
+
+| Do this | Result | Patch |
+|---|---|---|
+| hold **RETRIG** + press **GATE** | filter mode on ("FILTER ON", the four knob LEDs light up) | [13](patches/13-track-filter.md) |
+| tap **RETRIG** | filter mode off | [13](patches/13-track-filter.md) |
+| in the filter mode: **PITCH** / **COLOR** / **SHAPE** / **DECAY** | cutoff (127 = off) / resonance / envelope depth (bipolar, middle = off) / envelope decay | [13](patches/13-track-filter.md) |
+| hold a trig in the filter mode + turn one of them | p-lock the filter | [13](patches/13-track-filter.md) |
+| CC 74 / CC 71 | filter cutoff / resonance | [13](patches/13-track-filter.md) |
+| hold **RETRIG** + turn **LFO SPEED** | LFO Amount of the track: 0 = no LFO … 127 = full depth (default) | [14](patches/14-lfo-amount.md) |
+
+The filter parameters and LFO Amount are real parameters: choose them as LFO destination or velocity destination in
+the usual menus.
+
+## Patterns
+
+| Do this | Result | Patch |
+|---|---|---|
+| **PATTERN**, then **FUNC** + trig key | jump to that pattern now and keep the position; the selection stays open | [15](patches/15-direct-jump.md) |
+| **PATTERN**, then trig key | change at the end of the pattern (stock) | |
+
 ## What is saved where
 
 | Setting | Where |
@@ -91,7 +115,8 @@ Every new value shows a popup in the firmware's style while you turn.
 | reverb-slot effect, delay-slot effect, delay speed, strum, groove, humanize | **in each pattern** (saved with the project) |
 | CONTROL ALL relative / absolute | device settings |
 | trig conditions (also FIL2 / !FIL2) | in the pattern, like every trig |
-| load meter, trig selection, solo memory | not saved (off after power-on) |
+| filter cutoff / resonance / envelope / decay, LFO Amount | **in the sound** (kit, project), p-locks in the pattern |
+| load meter, trig selection, solo memory, filter mode | not saved (off after power-on) |
 
 The firmware writes its device settings **when you switch off**. A USB OS update restarts without saving them, so
 after switching the control mode, switch off once before you flash.

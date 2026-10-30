@@ -16,7 +16,7 @@ LATCH = json.load(open(ROOT / 'elektron-model-tweaks/tweaks/model-cycles_OS1.13/
 V1_ORDER = ['62-mute-solo', '63-live-mute', '64-hold-mute-v3', '65-delay-notes', '66-chorus', '67-phaser', '68-digi-delay',
             '69-razer', '70-mod-delays', '71-strum', '72-load-meter', '73-groove']
 V2_IDS = ['core', 'mute-solo', 'live-mute', 'hold-mute', 'delay-notes', 'reverb-fx', 'delay-fx', 'strum', 'load-meter', 'groove',
-          'control-mode', 'trig-select', 'fill2']
+          'control-mode', 'trig-select', 'fill2', 'track-filter', 'lfo-amount', 'direct-jump']
 V1SYM = {n: json.load(open(ROOT / 'solo' / f'{n}.json')).get('symbols', {}) for n in V1_ORDER}
 V2P = {}
 for f in sorted((V2 / 'out').glob('[0-9][0-9]-*.json')):

@@ -26,6 +26,10 @@ expect and runs them all. The tests run the original firmware code in Unicorn an
 | `test_control.py [--alone]` | 10 | real CONTROL ALL loop, setter and step functions: relative = stock, absolute; LEVEL / pan; the toggle in the real key handler; humanize |
 | `test_trigselect.py [--alone]` | 11 | selection mode with the real held-step functions; all/none; PAGE; LED blink; p-locks, nudge, note/velocity/length in absolute mode |
 | `test_fill2.py [--alone]` | 12 | real condition check against stock for all values, with and without fill and FUNC; real getter / setter, condition text and display mapping |
+| `test_trackfilter.py [--alone]` | 00, 13 | the filter through the real audio hook against a floating-point model; cutoff 127 bit-identical; response, envelope, stability, cost; filter mode with the real key handler; sound load / save with the real functions; p-locks |
+| `test_filterleds.py [--alone]` | 13 | the knob LEDs in the filter mode with the firmware's real LED function and knob-LED loop |
+| `test_lfoamount.py [--alone]` | 00, 14 | the real LFO hook (depth scaled and restored, 127 bit-identical, self-modulation); knob lookup; sound load / save; p-locks |
+| `test_directjump.py [--alone]` | 15 | the real sequencer interrupt: bit-identical to stock without a jump; direct jumps at many positions, per-track mode, MIDI program change; the keys of the pattern selection, its window and observer |
 
-`--alone` runs the test on an image with only the core and that patch (12: only that patch). `ramalias.py` maps the cached and uncached
+`--alone` runs the test on an image with only the core and that patch (12 and 15: only that patch). `ramalias.py` maps the cached and uncached
 RAM aliases onto one buffer; `rig.py` is the shared test bench of the v2 tests.

@@ -41,9 +41,12 @@ ACC = 0x4A33C3C0                      # SLOW: +0 Summe, +4 Ziel, +8 Zeit
 CTRL_MODE = 0x404E9B5D                # global (Einstellungsblock, beim Ausschalten gespeichert): CONTROL ALL
 CTRL_ABS = 0x5A                       # == CTRL_ABS: absolut; alles andere (0 nach Reset, v1-Reste 1..4): relativ = Firmware
 NSLOT = 8
-SLOT = {'reverb-fx': 0, 'delay-fx': 1, 'strum': 2, 'load-meter': 3, 'groove': 4, 'control-mode': 5, 'trig-select': 6}
+SLOT = {'reverb-fx': 0, 'delay-fx': 1, 'strum': 2, 'load-meter': 3, 'groove': 4, 'control-mode': 5, 'trig-select': 6, 'track-filter': 7}
 NKSLOT = 2                            # SETTINGS-Tasten-Slots (Druecken / Loslassen im Hauptbildschirm)
 KSLOT = {'control-mode': 0}
+NSSLOT = 4                            # Sound-Slots: Handler (a0 Satz, a1 Sound, d1 = 0 Laden / 1 Speichern) fuer eigene Parameter
+SSLOT = {'track-filter': 0, 'lfo-amount': 1}
+K_EXT0, K_EXT1 = 23, 32               # k 23..32: Parameter ohne Platz in der Firmware (Core: p-locks, LFO-/Velocity-Ziel im Sound)
 CM_SU, CM_SCR = 0x4A33C3A8, 0x4A33C3A9   # control-mode: SETTINGS benutzt (Druecken..Loslassen), Byte fuer COPY
 # Popup-Arten fuer OVS
 OV_HIDE, OV_NUM, OV_TEXT, OV_CUSTOM = 0, 1, 2, 3

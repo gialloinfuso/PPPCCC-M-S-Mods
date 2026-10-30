@@ -4,9 +4,9 @@
 import itertools, struct
 from rig import *
 
-MODS = ['reverb-fx', 'delay-fx', 'strum', 'load-meter', 'groove', 'control-mode', 'trig-select']
+MODS = ['reverb-fx', 'delay-fx', 'strum', 'load-meter', 'groove', 'control-mode', 'trig-select', 'track-filter', 'lfo-amount']
 GEST = {'reverb-fx': [(14, {2})], 'delay-fx': [(15, {2})], 'strum': [(5, {13})], 'load-meter': [(9, {13})], 'groove': [(12, {1})],
-        'control-mode': [], 'trig-select': []}   # control-mode: Encoder-Slot merkt nur SETTINGS-Drehungen, behandelt nichts
+        'control-mode': [], 'trig-select': [], 'track-filter': [], 'lfo-amount': []}   # control-mode: Encoder-Slot merkt nur SETTINGS-Drehungen, behandelt nichts
 EXTRA = {'delay-fx': [(8, {13})], 'groove': [(12, {13}), (12, {5})]}
 
 
@@ -30,10 +30,10 @@ for k in range(len(MODS) + 1):
             if not okc: bad.append((c, why))
             okc, why = combo_ok(['core'] + list(c) + f2)
             if not okc: bad.append((c, why))
-chk('alle 128 Kombinationen der Core-Mods (mit und ohne 01..04, mit und ohne 12) anwendbar, Ueberlappung nur mit dem Core %s'
+chk('alle %d Kombinationen' % (2 ** len(MODS)) + ' der Core-Mods (mit und ohne 01..04, mit und ohne 12) anwendbar, Ueberlappung nur mit dem Core %s'
     % bad[:2], not bad)
-for ind in (['live-mute'], ['hold-mute'], ['delay-notes'], ['mute-solo'], ['fill2'],
-            ['mute-solo', 'live-mute', 'hold-mute', 'delay-notes', 'fill2']):
+for ind in (['live-mute'], ['hold-mute'], ['delay-notes'], ['mute-solo'], ['fill2'], ['direct-jump'],
+            ['mute-solo', 'live-mute', 'hold-mute', 'delay-notes', 'fill2', 'direct-jump']):
     okc, why = combo_ok(ind); chk('unabhaengig ohne Core: %s %s' % (ind, why), okc)
 for m in MODS:
     chk('%s verlangt den Core (requires)' % m, V2P[m].get('requires') == ['core'])

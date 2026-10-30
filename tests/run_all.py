@@ -37,6 +37,10 @@ TESTS = [('solo', 'test_solo', []), ('livemute', 'test_livemute', []), ('holdmut
          ('control', 'test_control', []), ('control --alone', 'test_control', ['--alone']),
          ('trigselect', 'test_trigselect', []), ('trigselect --alone', 'test_trigselect', ['--alone']),
          ('fill2', 'test_fill2', []), ('fill2 --alone', 'test_fill2', ['--alone']),
+         ('trackfilter', 'test_trackfilter', []), ('trackfilter --alone', 'test_trackfilter', ['--alone']),
+         ('filterleds', 'test_filterleds', []), ('filterleds --alone', 'test_filterleds', ['--alone']),
+         ('lfoamount', 'test_lfoamount', []), ('lfoamount --alone', 'test_lfoamount', ['--alone']),
+         ('directjump', 'test_directjump', []), ('directjump --alone', 'test_directjump', ['--alone']),
          ('settings_key_113', 'test_settings_key_113', ['v2/out/full_section3.bin'])]
 
 

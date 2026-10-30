@@ -68,4 +68,4 @@ Addresses are virtual addresses of the OS 1.13 MAIN OS (file offset + 0x40000400
 
 Tested on a Model:Samples running the Cycles OS. New in v2.1.0. Not yet tested on a real Model:Cycles.
 
-← [11-trig-select](11-trig-select.md) · [all patches](../../README.md#features)
+← [11-trig-select](11-trig-select.md) · [all patches](../../README.md#features) · [13-track-filter](13-track-filter.md) →

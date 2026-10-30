@@ -3,7 +3,7 @@
 import json, sys, pathlib, importlib
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import common as C
-import g2_core, g2_reverbfx, g2_delayfx, g2_strum, g2_loadmeter, g2_groove, g2_control, g2_trigselect, g2_fill2
+import g2_core, g2_reverbfx, g2_delayfx, g2_strum, g2_loadmeter, g2_groove, g2_control, g2_trigselect, g2_fill2, g2_trackfilter, g2_lfoamount, g2_directjump
 import gen_solo, gen_livemute, gen_holdmute_113, gen_delaynotes_113
 
 OUT = pathlib.Path(__file__).parent / 'out'
@@ -22,7 +22,7 @@ def independents(img):
 def all_patches(img):
     ps = independents(img)
     ps.append(g2_core.tweak(img))
-    for mod in (g2_reverbfx, g2_delayfx, g2_strum, g2_loadmeter, g2_groove, g2_control, g2_trigselect, g2_fill2):
+    for mod in (g2_reverbfx, g2_delayfx, g2_strum, g2_loadmeter, g2_groove, g2_control, g2_trigselect, g2_fill2, g2_trackfilter, g2_lfoamount, g2_directjump):
         ps.append(mod.tweak(img))
     return sorted(ps, key=lambda t: t['order'])
 

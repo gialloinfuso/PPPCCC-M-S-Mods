@@ -1,5 +1,31 @@
 # Changelog
 
+## v2.2.0 (2026-10-30)
+
+New features:
+
+- **13 Track filter:** a warm, resonant 12 dB low-pass filter on every track, with its own envelope. Hold RETRIG +
+  press GATE for the filter mode (the four knob LEDs light up), tap RETRIG to leave it. In the mode PITCH = cutoff,
+  COLOR = resonance, SHAPE = envelope depth (bipolar), DECAY = envelope decay. Four real parameters on every machine:
+  p-locks, LFO and velocity destinations, CC 74 / CC 71, saved with the sound. Cutoff 127 = off, bit-identical to no
+  filter; on / off is crossfaded.
+- **14 LFO Amount:** a new parameter per track (hold RETRIG + turn LFO SPEED) that scales how strongly the LFO depth
+  acts, from 0 (no LFO) to 127 (full depth, the default and stock behaviour). p-lockable, LFO and velocity
+  destination, saved with the sound.
+- **15 Direct jump:** PATTERN, then FUNC + a trig key: the new pattern takes over within the next steps and plays on
+  from the current position (per-track mode too). The selection stays open for the next jump. A trig key alone
+  changes at the end of the pattern as before.
+
+Updated:
+
+- **00 Core:** sound slots for extra parameters (saved and loaded with the sound), p-locks and LFO / velocity
+  destinations for parameters k 23–32, encoder slot 7 for the track filter. Used by 13 and 14.
+
+Patches 01–12 write exactly the same bytes as in v2.1.0. Sounds and patterns from v2.1.0 or the stock OS load as
+before: the new parameters start at their defaults (filter open, LFO Amount 127).
+
+Docs: the project page and the README mark new features (NEW) and the core update (UPDATE).
+
 ## v2.1.0 (2026-10-27)
 
 New feature:

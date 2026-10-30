@@ -78,6 +78,10 @@ python3 tools/build.py --tweaks elektron-model-tweaks --in model-cycles_OS1.13.s
 | 09 | `groove` | core (humanize with TRACK follows 10 when it is installed) |
 | 10 | `control-mode` | core |
 | 11 | `trig-select` | core (absolute mode follows 10 when it is installed) |
+| 12 | `fill2` | – |
+| 13 | `track-filter` | core |
+| 14 | `lfo-amount` | core |
+| 15 | `direct-jump` | – |
 
 The core is added automatically when a chosen patch needs it. Every combination can be applied together; the tool
 checks this and stops on any collision. The published full-set checksum is only checked when you build the full set.
@@ -94,12 +98,12 @@ python3 tools/apply_patches.py section_3_MAIN_OS.bin patched.bin \
 python3 tools/apply_patches.py section_3_MAIN_OS.bin patched.bin reverb-fx trig-select   # core is added
 ```
 
-Known inputs and the expected result of the full set (latching mute + 00 to 11):
+Known inputs and the expected result of the full set (latching mute + 00 to 15):
 
 | MAIN OS | SHA-256 of the input | SHA-256 of the result |
 |---|---|---|
-| official Model:Cycles OS 1.13 | `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98` | `86b3462ebfe4c1e47fd773cb6073b0f80dbe6faee33487440b67a72c8106f40d` |
-| Cycles OS for Model:Samples (cross-flash) | `b6fbc48f7d7d07cecae3859e07270fa2298f393e8afa2643144bdb4efc317aad` | `50bc19330ae1a9edc079c785982e40c7fd76964912980cfff49a78b7d567c3a4` |
+| official Model:Cycles OS 1.13 | `cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98` | `af8244f16c2f416fe503567c7de6c20a33e2849bafddb9ad09b94efe915ced38` |
+| Cycles OS for Model:Samples (cross-flash) | `b6fbc48f7d7d07cecae3859e07270fa2298f393e8afa2643144bdb4efc317aad` | `a2086b329ea9ebac2587a2a2413004928583a24804d4f0f37a74688c188417e4` |
 
 ## Rebuilding the patches and running the tests
 
@@ -115,5 +119,5 @@ python3 src/regen.py base/section_3_MAIN_OS.bin       # runs every generator, co
 python3 tests/run_all.py base/section_3_MAIN_OS.bin   # runs every emulator test
 ```
 
-`regen.py` must print `ok` for all 13 patches. That shows the published bytes come from the sources in `src/` and
+`regen.py` must print `ok` for all 16 patches. That shows the published bytes come from the sources in `src/` and
 the groove tables in `grooves/grooves.json`. `run_all.py` must end with `all tests ok`.

@@ -1,0 +1,134 @@
+{
+ "id": "lfo-amount",
+ "order": 14,
+ "name": "LFO Amount: how strongly the LFO depth acts",
+ "description": [
+  "Hold RETRIG + turn LFO SPEED = LFO Amount of the track (0..127, default 127 = as before). Scales the LFO depth",
+  "without changing it. A real parameter: p-lockable, LFO and velocity destination, saved with the sound."
+ ],
+ "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
+ "os": "1.13",
+ "section": 3,
+ "requires": [
+  "core"
+ ],
+ "hooks": [
+  "0x4001e814",
+  "0x400597c6"
+ ],
+ "memory": [
+  {
+   "va": "0x4014a890",
+   "size": 108
+  },
+  {
+   "va": "0x401592bc",
+   "size": 192
+  },
+  {
+   "va": "0x4014aa34",
+   "size": 108
+  },
+  {
+   "va": "0x4014aa5c",
+   "size": 24,
+   "ram": true,
+   "use": "depth backup + amount per track"
+  }
+ ],
+ "symbols": {
+  "W": "0x4014a890",
+  "POST": "0x4014a8b2",
+  "AMT": "0x401592bc",
+  "AH": "0x4014aa34",
+  "ST": "0x4014aa5c"
+ },
+ "params": {
+  "enc_lfo": 10,
+  "key_retrig": 4,
+  "desc": 5,
+  "k": 32,
+  "rec_byte": 84
+ },
+ "writes": [
+  {
+   "off": 123924,
+   "va": "0x4001e814",
+   "len": 6,
+   "old_sha256": "b806f010f13616a431043cb7fbc959a028b2fda3c89c9b829d70d30c346b9224",
+   "new": "4ef94014a890"
+  },
+  {
+   "off": 365510,
+   "va": "0x400597c6",
+   "len": 6,
+   "old_sha256": "bb81b2c164def9ae07db95a3ba57ee2ec2f5c7d13a02409ccb72d2cfaa441c2e",
+   "new": "4eb9401592bc"
+  },
+  {
+   "off": 749572,
+   "va": "0x400b7404",
+   "len": 4,
+   "old_sha256": "82e30888a2b260596e91f5763cde8d1d5b91757af6e9bb9b7554c9a1f906e510",
+   "new": "4014b364"
+  },
+  {
+   "off": 765304,
+   "va": "0x400bb178",
+   "len": 4,
+   "old_sha256": "5ea80cc328a2e490e7d24d0923d76561484ee32a6ccbea25f4dea95fac099c2a",
+   "new": "4014a550"
+  },
+  {
+   "off": 765436,
+   "va": "0x400bb1fc",
+   "len": 4,
+   "old_sha256": "fec0f2b72408cba8bb6411192f07c38a91d08ca108b0d4ece5272e01138bb867",
+   "new": "4014a550"
+  },
+  {
+   "off": 1104376,
+   "va": "0x4010ddf8",
+   "len": 56,
+   "old_sha256": "729b87abe3309990f0d8b515051a2f05f55c110d57aad56c9eafce0fb45d66b0",
+   "new": "00000007000000200000000000007f0000007f0000000000ffffffffffffffff00000000000006000000004c4014aa74401267254014aa7f"
+  },
+  {
+   "off": 1352848,
+   "va": "0x4014a890",
+   "len": 98,
+   "old_sha256": "fd7faf463bc0baad5c576cd9acfa7e5c956316a983a570da2d1ce146f648183a",
+   "new": "2f2f00102f2f00102f2f00102f2f001048794014a8b20000000000004ef94001e81a222f00040c810000000a6600002e2f00487800044eb94007faf4588f2200201f4a8167000016223c400456c823c140a7196842b940a7197470054fef00104e75",
+   "from_original": [
+    {
+     "at": 22,
+     "off": 123924,
+     "va": "0x4001e814",
+     "len": 6,
+     "sha256": "b806f010f13616a431043cb7fbc959a028b2fda3c89c9b829d70d30c346b9224"
+    }
+   ]
+  },
+  {
+   "off": 1353268,
+   "va": "0x4014aa34",
+   "len": 80,
+   "old_sha256": "9b196f80a89cf84ee57bdcca2b082e3712eab48a0ec7fe6c988fb4957c280cf4",
+   "new": "4a816600001471a800540a800000007fe188334000544e7571a900540a800000007f114000544e750000000000000000000000000000000000000000000000004c464f20416d6f756e74004c414d5400"
+  },
+  {
+   "off": 1412796,
+   "va": "0x401592bc",
+   "len": 168,
+   "old_sha256": "6b9d982495e078fcfa1e5da365e2dc1405a502f01335ca74448c2589d370805f",
+   "new": "4feffff048d70c0c246f001445ea000e47f94014aa5c7405263c00007f0036aa001073eb000c0a8100007f00b2836400001e716a00100480000040004c0108004c4308000680000040003540001045ea0042548b53826a00ffc62f2f001c2f2f001c2f2f001c4eb940091ab24fef000c246f001445ea000e47f94014aa5c74053553001073ea00400a8100007f003741000c45ea0042548b53826a00ffe44cd70c0c4fef00104e75"
+  },
+  {
+   "off": 1590456,
+   "va": "0x401848b8",
+   "len": 4,
+   "old_sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119",
+   "new": "4014aa34"
+  }
+ ]
+}

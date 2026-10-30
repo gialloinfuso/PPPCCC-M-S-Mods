@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PPPCCC M:C Mods</title>
-<meta name="description" content="Extra features for the Elektron Model:Cycles OS 1.13: solo and better mutes, delay notes, new effects, chord strum, grooves with humanize, load meter, absolute CONTROL ALL and trig select.">
+<meta name="description" content="Extra features for the Elektron Model:Cycles OS 1.13: solo and better mutes, delay notes, new effects, chord strum, grooves with humanize, load meter, absolute CONTROL ALL, trig select, a second fill, a filter on every track, LFO amount and direct pattern jumps.">
 <style>
 :root{
   --bg:#141418; --bg2:#1b1b21; --card:#202028; --line:#2e2e38; --text:#ececf1; --muted:#9a9aa8;
@@ -63,6 +63,11 @@ section{padding:48px 0;border-top:1px solid var(--line)}
 /* features */
 .features{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
 .feat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;display:flex;flex-direction:column;gap:6px;scroll-margin-top:72px}
+.tag{display:inline-block;vertical-align:middle;margin-left:8px;padding:1px 8px;border-radius:999px;font-size:.7rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace}
+.tag.new{background:var(--accent);color:#16110c}
+.tag.upd{background:var(--accent2);color:#0b1620}
+.update{margin:0 0 20px;padding:12px 16px;border-left:3px solid var(--accent2);background:var(--bg2);border-radius:0 10px 10px 0;color:var(--muted);font-size:.95rem;max-width:820px}
+.update b{color:var(--text)}
 .feat .num{font-family:ui-monospace,Menlo,monospace;font-size:.85rem;color:var(--accent);font-weight:700}
 .feat h3{margin-bottom:4px}
 .feat p,.feat li{color:var(--muted);font-size:.95rem}
@@ -114,7 +119,8 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:.9rem;border-top:1px sol
   <h1>PPPCCC M:C Mods</h1>
   <p class="lead">Extra features for the official firmware anyone can download from Elektron: solo and better mutes,
     tempo-synced delay notes, new effects, strummed chords, grooves with humanize, an audio load meter, absolute
-    CONTROL ALL, a selection mode for trigs and a second fill.</p>
+    CONTROL ALL, a selection mode for trigs, a second fill, a filter on every track, an LFO amount and direct pattern
+    jumps.</p>
   <p class="lead">Every feature is a separate patch with its own documentation, generator and emulator test, and you
     choose which ones you install.</p>
   <div class="btns">
@@ -123,9 +129,11 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:.9rem;border-top:1px sol
     <a class="btn" href="#features">Features &amp; demos</a>
     <a class="btn" href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods">View on GitHub</a>
   </div>
-  <div class="status"><b>Status: v2.1.0.</b> Every patch was developed in an emulator and tested on my own
+  <div class="status"><b>Status: v2.2.0.</b> Every patch was developed in an emulator and tested on my own
     Model:Samples running the Cycles OS. A real Model:Cycles has <b>not</b> been tested yet. The code paths are the same,
-    but please report back if you try it. Coming from v1.0.0? Read
+    but please report back if you try it. New in v2.2.0: patches 13–15, and an update of the core (patch 00) for them;
+    patches 01–12 are unchanged (<a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/CHANGELOG.md#v220-2026-10-30">changelog</a>).
+    Coming from v1.0.0? Read
     <a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/CHANGELOG.md#upgrading-from-v100">what changed</a>.</div>
 </div>
 
@@ -135,9 +143,60 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:.9rem;border-top:1px sol
   <div class="wrap">
     <h2>Features</h2>
     <p class="sub">Each feature is one patch; the number is the patch number, the newest come first. “Details” opens
-      the full page with storage, hooks, memory and tests. Patches 05–11 build on a small <b>core</b> (patch 00), which
-      the build tool adds automatically; 01–04 and 12 need nothing else.</p>
+      the full page with storage, hooks, memory and tests. Patches 05–11, 13 and 14 build on a small <b>core</b>
+      (<a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/patches/00-core.md">patch 00</a>), which
+      the build tool adds automatically; 01–04, 12 and 15 need nothing else.</p>
+    <div class="update"><span class="tag upd" style="margin:0 8px 0 0">Update</span><b>Core (00), v2.2.0:</b> the core now
+      also gives mods extra sound parameters: saved with the sound, p-lockable and usable as LFO / velocity destination.
+      The track filter (13) and the LFO amount (14) use it. Nothing changes for 01–12, and your sounds and patterns load
+      as before.</div>
     <div class="features">
+      <article class="feat" id="p15">
+        <img class="ttl" src="assets/titles/15.png" alt="">
+        <div class="num">15</div><h3>Direct Jump <span class="tag new">New</span></h3>
+        <p>Change the pattern <b>right away</b> instead of at the end of the pattern, and keep the position.
+          <b>Press PATTERN, then FUNC + a trig key</b>: the new pattern takes over within the next steps and plays on
+          from the position the old one was at. The selection stays open, so you can jump again and again.</p>
+        <ul>
+          <li>A trig key without FUNC changes the pattern at its end, as usual.</li>
+          <li>In per-track mode every track keeps its own position.</li>
+          <li>The jump sends the MIDI program change like a normal change.</li>
+        </ul>
+        <div class="how"><span class="ctl"><kbd>PATTERN</kbd>, then <kbd>FUNC</kbd> + trig</span><a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/patches/15-direct-jump.md">Details</a></div>
+      </article>
+
+      <article class="feat" id="p14">
+        <img class="ttl" src="assets/titles/14.png" alt="">
+        <div class="num">14</div><h3>LFO Amount <span class="tag new">New</span></h3>
+        <p>A new parameter per track that says how strongly the LFO depth acts: <b>0</b> = the LFO does nothing,
+          <b>127</b> = full depth (the default, exactly as before). The LFO settings themselves stay as they are, so you
+          can fade an LFO in and out.</p>
+        <ul>
+          <li><b>Hold RETRIG + turn LFO SPEED</b> = LFO Amount of the track. Without RETRIG the knob is LFO Speed as
+            usual.</li>
+          <li>A real parameter: p-lockable, LFO and velocity destination (the LFO can modulate its own amount), saved
+            with the sound.</li>
+        </ul>
+        <div class="how"><span class="ctl"><kbd>RETRIG</kbd> + <kbd>LFO SPEED</kbd></span><a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/patches/14-lfo-amount.md">Details</a></div>
+      </article>
+
+      <article class="feat" id="p13">
+        <img class="ttl" src="assets/titles/13.png" alt="">
+        <div class="num">13</div><h3>Track Filter <span class="tag new">New</span></h3>
+        <p>A warm, resonant <b>12 dB low-pass filter on every track</b>, with its own envelope, on all six machines.</p>
+        <ul>
+          <li><b>Hold RETRIG + press GATE</b> = filter mode on (“FILTER ON”), the four knob LEDs light up. <b>Tap
+            RETRIG</b> = off.</li>
+          <li>In the mode: <b>PITCH</b> = cutoff (20 Hz–20 kHz, 127 = off), <b>COLOR</b> = resonance, <b>SHAPE</b> =
+            envelope depth (right opens, left closes, middle = off), <b>DECAY</b> = envelope decay (5 ms–5 s).</li>
+          <li>Hold a trig to p-lock the filter. All four are real parameters: LFO and velocity destinations, CC 74
+            (cutoff) and CC 71 (resonance), saved with the sound.</li>
+          <li>At cutoff 127 the track sounds exactly as without the filter; on and off are crossfaded, so it never
+            clicks. Old sounds load with the filter open.</li>
+        </ul>
+        <div class="how"><span class="ctl"><kbd>RETRIG</kbd> + <kbd>GATE</kbd></span><a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/patches/13-track-filter.md">Details</a></div>
+      </article>
+
       <article class="feat" id="p12">
         <img class="ttl" src="assets/titles/12.png" alt="">
         <div class="num">12</div><h3>Alternative Fill</h3>
@@ -391,6 +450,10 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:.9rem;border-top:1px sol
       <table>
         <thead><tr><th>Feature</th><th>Control</th><th>Result</th></tr></thead>
         <tbody>
+          <tr><td>15 Direct jump</td><td><kbd>PATTERN</kbd>, then <kbd>FUNC</kbd> + trig key</td><td>jump to that pattern now, keep the position; selection stays open</td></tr>
+          <tr><td>14 LFO Amount</td><td>hold <kbd>RETRIG</kbd> + turn <kbd>LFO SPEED</kbd></td><td>how much of the LFO depth is used (0–127)</td></tr>
+          <tr><td>13 Track filter</td><td>hold <kbd>RETRIG</kbd> + press <kbd>GATE</kbd> · tap <kbd>RETRIG</kbd></td><td>filter mode on · off</td></tr>
+          <tr><td>13 Track filter</td><td>in the filter mode: <kbd>PITCH</kbd> / <kbd>COLOR</kbd> / <kbd>SHAPE</kbd> / <kbd>DECAY</kbd></td><td>cutoff / resonance / envelope depth / envelope decay</td></tr>
           <tr><td>12 Fill 2</td><td>hold <kbd>PAGE</kbd>, then also <kbd>FUNC</kbd></td><td>Fill 2 instead of Fill 1 (also with TRACK + PAGE latched)</td></tr>
           <tr><td>12 Fill 2</td><td>trig conditions <b>FIL2</b> / <b>!FIL2</b></td><td>play only in Fill 2 / play except in Fill 2</td></tr>
           <tr><td>11 Trig select</td><td><kbd>SETTINGS</kbd> + <kbd>PAGE</kbd></td><td>selection mode on / off</td></tr>

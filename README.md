@@ -3,21 +3,63 @@
 Extra features for the **Elektron Model:Cycles OS 1.13**, the official firmware anyone can download from Elektron.
 They also run on a **Model:Samples** that runs the Cycles OS. You get solo and better mutes, tempo-synced delay notes,
 new effects, strummed chords, grooves with humanize, an audio load meter, absolute CONTROL ALL, a selection mode
-for trigs and a second fill.
+for trigs, a second fill, a filter on every track, an LFO amount and direct pattern jumps.
 
 Every feature is a separate patch with its own documentation, generator and emulator test, and you can choose which
 ones you install.
 
-> **Status: v2.1.0.** Every patch was developed in an emulator and tested on my own Model:Samples running the Cycles OS.
+> **Status: v2.2.0.** Every patch was developed in an emulator and tested on my own Model:Samples running the Cycles OS.
 > A real Model:Cycles has **not** been tested yet. The code paths are the same, but please report back if you try it.
-> Coming from v1.0.0? Read [what changed](docs/CHANGELOG.md#upgrading-from-v100).
+> New in v2.2.0: patches 13–15; the core (patch 00) got an update for them. Patches 01–12 are unchanged.
+> What changed: [changelog](docs/CHANGELOG.md#v220-2026-10-30). Coming from v1.0.0? Read [this](docs/CHANGELOG.md#upgrading-from-v100).
 
 ## Features
 
 Each feature is one patch; the number is the patch number. The newest come first. A click on a demo picture plays
 the sound recording (it opens on the project page, [gialloinfuso.github.io/PPPCCC-M-S-Mods](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/)). The heading links to the full page
-with storage, hooks, memory and tests. Patches 05–11 build on a small **core** (patch 00), which the build tool adds
-automatically; 01–04 and 12 need nothing else.
+with storage, hooks, memory and tests. Patches 05–11, 13 and 14 build on a small **core**
+([patch 00](docs/patches/00-core.md)), which the build tool adds automatically; 01–04, 12 and 15 need nothing else.
+
+> **UPDATE v2.2.0 · core (00):** the core now also gives mods extra sound parameters, saved with the sound, p-lockable
+> and usable as LFO / velocity destination. The track filter (13) and the LFO amount (14) use it. Nothing changes for
+> 01–12, and your sounds and patterns load as before.
+
+### 15 · Direct jump ([details](docs/patches/15-direct-jump.md)) · `NEW v2.2.0`
+
+<img src="assets/titles/15.png" width="320" alt="">
+
+Change the pattern **right away** instead of at the end of the pattern, and keep the position. Press **PATTERN**, then
+**FUNC + a trig key**: the new pattern takes over within the next steps and plays on from the position the old one was
+at. The selection stays open, so you can jump again and again.
+
+- A trig key without FUNC changes the pattern at its end, as usual.
+- In per-track mode every track keeps its own position.
+- The jump sends the MIDI program change like a normal change.
+
+### 14 · LFO Amount ([details](docs/patches/14-lfo-amount.md)) · `NEW v2.2.0`
+
+<img src="assets/titles/14.png" width="320" alt="">
+
+A new parameter per track that says how strongly the LFO depth acts: 0 = the LFO does nothing, 127 = full depth (the
+default, exactly as before). The LFO settings themselves stay as they are, so you can fade an LFO in and out.
+
+- **Hold RETRIG + turn LFO SPEED** = LFO Amount of the track. Without RETRIG the knob is LFO Speed as usual.
+- A real parameter: p-lockable, LFO and velocity destination (the LFO can modulate its own amount), saved with the
+  sound.
+
+### 13 · Track filter ([details](docs/patches/13-track-filter.md)) · `NEW v2.2.0`
+
+<img src="assets/titles/13.png" width="320" alt="">
+
+A warm, resonant **12 dB low-pass filter on every track**, with its own envelope, on all six machines.
+
+- **Hold RETRIG + press GATE** = filter mode on ("FILTER ON"); the four knob LEDs light up. **Tap RETRIG** = off.
+- In the filter mode: **PITCH** = cutoff (20 Hz–20 kHz, 127 = off), **COLOR** = resonance, **SHAPE** = envelope
+  depth (right opens, left closes, middle = off), **DECAY** = envelope decay (5 ms–5 s).
+- Hold a trig to p-lock the filter. All four are real parameters: LFO and velocity destinations, CC 74 (cutoff) and
+  CC 71 (resonance), saved with the sound.
+- At cutoff 127 the track sounds exactly as without the filter; switching on and off is crossfaded, so it never
+  clicks. Old sounds load with the filter open.
 
 ### 12 · Fill 2 ([details](docs/patches/12-fill2.md))
 
@@ -243,6 +285,10 @@ FUNC key lights up.
 
 | Feature | Control | Result |
 |---|---|---|
+| 15 Direct jump | **PATTERN**, then **FUNC** + trig key | jump to that pattern now, keep the position; selection stays open |
+| 14 LFO Amount | hold **RETRIG** + turn **LFO SPEED** | how much of the LFO depth is used (0–127) |
+| 13 Track filter | hold **RETRIG** + press **GATE** · tap **RETRIG** | filter mode on · off |
+| 13 Track filter | in the filter mode: **PITCH** / **COLOR** / **SHAPE** / **DECAY** | cutoff / resonance / envelope depth / envelope decay |
 | 12 Fill 2 | hold **PAGE**, then also **FUNC** | Fill 2 instead of Fill 1 (also with TRACK + PAGE latched) |
 | 12 Fill 2 | trig conditions **FIL2** / **!FIL2** | play only in Fill 2 / play except in Fill 2 |
 | 11 Trig select | **SETTINGS + PAGE** | selection mode on / off |
