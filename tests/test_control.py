@@ -131,6 +131,104 @@ for what, held in (('TRACK + LEVEL (Lautstaerke)', (2,)), ('FUNC + TRACK + LEVEL
         chk('   absolut: %s, d0 und Register wie Stock' % ('alle = neuer Wert des ausgewaehlten' if 2 in held else 'wie Stock'),
             (va, pa) == exp and d0a == d0s and ga and (2 in held or la == ls))
 
+# ------------------------------------------------------------------ 2b. smp26 Control-All-Spurauswahl (CA_SEL): Regler, Lautstaerke, Pan
+import g2_control as GC
+SELB = 0x80 | 0b010110                         # Spur 2, 3, 5 ausgenommen
+for name, ps, vals, sel, d in CASES[:4]:
+    for mode in (0, ABS):
+        bi.e.w8(C.CA_SEL, 0); ra, _, _ = bi.knob(mode, ps, vals, sel, d)
+        bi.e.w8(C.CA_SEL, SELB); rb, lb, gb = bi.knob(mode, ps, vals, sel, d)
+        exp = [vals[t] if (SELB >> t) & 1 and t != sel else ra[t] for t in range(6)]
+        chk('Auswahl %s, %s: nur Spuren 1 / 4 / 6 + aktive %s' % (name, 'absolut' if mode else 'relativ', rb), rb == exp and gb)
+bi.e.w8(C.CA_SEL, 0xC6)
+r1 = bi.knob(0, SHAPE, [1000] * 6, 0, 256)[0]; bi.e.w8(C.CA_SEL, 0x16); r2 = bi.knob(0, SHAPE, [1000] * 6, 0, 256)[0]
+chk('Ungueltige Auswahl-Bytes (0xc6, 0x16; v1-Reste): alle Spuren', r1 == r2 == [1256] * 6)
+for what, held in (('Lautstaerke', (2,)), ('Pan', (2, 1)), ('ohne TRACK', ())):
+    for mode in (0, ABS):
+        for sel in (1, 3):
+            bi.e.w8(C.CA_SEL, 0); va, pa, _, _, _ = bi.level(mode, VOLS, PANS, sel, 25, held)
+            bi.e.w8(C.CA_SEL, SELB); vb, pb, _, d0b, gb = bi.level(mode, VOLS, PANS, sel, 25, held)
+            ev = [VOLS[t] if (SELB >> t) & 1 and t != sel else va[t] for t in range(6)]
+            ep = [PANS[t] if (SELB >> t) & 1 and t != sel else pa[t] for t in range(6)]
+            chk('Auswahl %s, %s, Spur %d: %s / %s' % (what, 'absolut' if mode else 'relativ', sel + 1, vb, pb), (vb, pb) == (ev, ep) and gb)
+bi.e.w8(C.CA_SEL, 0)
+# TRACK gehalten = TrackSelectionView: Tasten (+8 -> TSK2) und LEDs (+0x44 -> TSLW)
+S = V2SYM['control-mode']
+TKS = C.PIMG(C.TKSLOTS + 4 * C.TKSLOT['control-mode']) - BASE
+chk('Vtable der TrackSelectionView: +8 = Core TSVK (Slot control-mode = TSK2, smp28), +0x44 = TSLW',
+    struct.unpack('>I', IMG[GC.TSV_KEY_SLOT - BASE:][:4])[0] == V2SYM['core']['TSVK'] and struct.unpack('>I', IMG[TKS:TKS + 4])[0] == S['TSK2']
+    and struct.unpack('>I', IMG[GC.TSV_LED_SLOT - BASE:][:4])[0] == S['TSLW'])
+e = Emu(IMG); EVK, VW, MASK = 0x4F04E200, 0x4F04E300, 0x4F04E400
+chk('smp29: Auswahl im RAM der Nutzlast (letztes Wort des Platzes control-mode), nach dem Start 0 = alle Spuren an',
+    C.CA_SEL == C.PAY + C.PAY_SLOT['control-mode'][0] + C.PAY_SLOT['control-mode'][1] - 4 and e.r8(C.CA_SEL) == 0
+    and IMG[C.PIMG(C.CA_SEL) - BASE] == 0)
+leds, orig = [], []
+CTX = 0x4F0AA000
+e.w32(C.TIMER, 1 << C.SEL_BLINK_BIT)                 # smp41: ausgewaehlt blinkt schnell (Zeitgeber-Bit 24): hier 'an' = 2
+def stub(fn):
+    def f(u, a, z, _):
+        sp = u.reg_read(mk.UC_M68K_REG_A7); r = fn(sp)
+        for x in (mk.UC_M68K_REG_D1, mk.UC_M68K_REG_A0, mk.UC_M68K_REG_A1): u.reg_write(x, 0xBAD)
+        u.reg_write(mk.UC_M68K_REG_D0, r); u.reg_write(mk.UC_M68K_REG_PC, e.r32(sp)); u.reg_write(mk.UC_M68K_REG_A7, sp + 4)
+    return f
+e.u.hook_add(UC_HOOK_CODE, stub(lambda sp: 0x20 + 2 * e.r32(sp + 4)), begin=GC.LED_OF, end=GC.LED_OF)
+e.u.hook_add(UC_HOOK_CODE, stub(lambda sp: CTX), begin=GC.LED_CTX, end=GC.LED_CTX)
+e.u.hook_add(UC_HOOK_CODE, stub(lambda sp: leds.append(tuple(e.r32(sp + 4 + 4 * i) for i in range(4))) or 0), begin=GC.LED_SET, end=GC.LED_SET)
+e.u.hook_add(UC_HOOK_CODE, stub(lambda sp: orig.append(('key', e.r32(sp + 4), e.r32(sp + 8))) or 7), begin=GC.TSV_KEY, end=GC.TSV_KEY)
+e.u.hook_add(UC_HOOK_CODE, stub(lambda sp: orig.append(('led', e.r32(sp + 4), e.r32(sp + 8))) or 0), begin=GC.TSV_LED, end=GC.TSV_LED)
+def tsk(code, flags):
+    leds.clear(); orig.clear(); e.w32(EVK + 0x0C, code); e.w32(EVK + 0x10, flags); e.w32(C.VARS + C.V_VAL, 0)
+    d0, good = e.call(V2SYM['core']['TSVK'], VW, EVK, count=50000)          # smp28: ueber den Core (pad-mode davor, FUNC nicht gehalten)
+    return d0, good, e.r8(C.CA_SEL), list(leds), list(orig)
+e.w8(C.CA_SEL, 0)
+r = tsk(18, 1)
+chk('TRACK + Trig 3: Spur 3 aus (0x84), Popup %s / %s / %s, LEDs gesetzt, behandelt (d0 = 1), Register ok'
+    % (e.cstr(e.r32(C.VARS + C.V_L1)), e.cstr(e.r32(C.VARS + C.V_L2)), e.cstr(e.r32(C.VARS + C.V_VAL))),
+    r[0] == 1 and r[1] and r[2] == 0x84 and e.cstr(e.r32(C.VARS + C.V_L1)) == 'Ctrl All' and e.cstr(e.r32(C.VARS + C.V_L2)) == 'Track 3'
+    and e.cstr(e.r32(C.VARS + C.V_VAL)) == 'Off' and r[3] == [(CTX, 0x20 + 2 * t, 1 if t == 2 else 2, GC.LED_ARG) for t in range(6)] and r[4] == [])
+r = tsk(18, 0); r2 = tsk(18, 1)
+chk('Loslassen: verbraucht, nichts geaendert; nochmal: Spur 3 wieder an (0x80), Popup On',
+    r[0] == 1 and r[2] == 0x84 and r[3] == [] and r2[2] == 0x80 and e.cstr(e.r32(C.VARS + C.V_VAL)) == 'On')
+r = tsk(21, 1); r2 = tsk(22, 1); r3 = tsk(2, 16); r4 = tsk(10, 1)
+chk('Trig 6 -> 0xa0; Trig 7, TRACK, PLAY: Firmware-Handler mit denselben Argumenten (d0 durchgereicht)',
+    r[2] == 0xA0 and all(x[4] == [('key', VW, EVK)] and x[0] == 7 and x[2] == 0xA0 for x in (r2, r3, r4)))
+e.w8(C.CA_SEL, 0x3F); r = tsk(16, 1)
+chk('Ungueltiges Byte (0x3f): beginnt mit allen, Trig 1 -> 0x81', r[2] == 0x81)
+e.w8(C.CA_SEL, 0x80 | 0b100100); e.u.mem_write(MASK, bytes(8)); leds.clear(); orig.clear()
+_, good = e.call(S['TSLW'], VW, MASK, count=50000)
+m = struct.unpack('>II', bytes(e.u.mem_read(MASK, 8)))
+want = 0
+for t in range(6): want |= 1 << (0x20 + 2 * t)
+chk('LEDs der TrackSelectionView: Firmware (Ansicht, Maske), dann Trig 1..6 = %s, in der Maske belegt' % [x[2] for x in leds],
+    good and orig == [('led', VW, MASK)] and leds == [(CTX, 0x20 + 2 * t, 1 if t in (2, 5) else 2, GC.LED_ARG) for t in range(6)]
+    and (m[1] << 32 | m[0]) == want)
+chk('Haken 0x40021ec2 = jsr CLB', IMG[GC.CLB_HOOK - BASE:][:6] == C.jsr(S['CLB']))
+def clb(held):
+    leds.clear(); e.held = set(held)
+    _, good = e.call(S['CLB'], count=50000, regs={mk.UC_M68K_REG_A4: 0})
+    return good, e.u.reg_read(mk.UC_M68K_REG_A4), list(leds)
+r1, r2 = clb(()), clb((2,))
+chk('CLB (vor der Grid-LED-Schleife): a4 = 0x4000608c; ohne TRACK keine LED, mit TRACK Trig 1..6 zuerst = Auswahl %s' % [x[2] for x in r2[2]],
+    r1[0] and r1[1] == GC.LED_OF and r1[2] == [] and r2[0] and r2[1] == GC.LED_OF
+    and r2[2] == [(CTX, 0x20 + 2 * t, 1 if t in (2, 5) else 2, GC.LED_ARG) for t in range(6)])
+import struct as _s
+lsl = _s.unpack('>I', bytes(e.u.mem_read(C.LSLOTS + 4 * C.LSLOT['control-mode'], 4)))[0]
+chk('LED-Filter-Slot des Cores = CALSF (Core LEDF am Anfang von LED_SET)', lsl == S['CALSF'])
+def calsf(led, state, held):
+    e.held = set(held)
+    _, good = e.call(S['CALSF'], regs={mk.UC_M68K_REG_D0: led, mk.UC_M68K_REG_D1: state}, count=20000)
+    return good, e.u.reg_read(mk.UC_M68K_REG_D1)
+e.w8(C.CA_SEL, 0x80 | 0b000100)
+res = [calsf(0x20 + 2 * t, 3, (2,)) for t in range(7)] + [calsf(0x22, 3, ()), calsf(0x1f, 2, (2,)), calsf(0x20, 3, (2, 4))]
+e.w32(C.TIMER, 0); res2 = [calsf(0x20, 3, (2,))]; e.w32(C.TIMER, 1 << C.SEL_BLINK_BIT)
+chk('CALSF: mit TRACK Trig 1..6 = Auswahl, schnell blinkend (an 2 / aus 1) %s, Trig 7 / ohne TRACK / TRACK-LED / TRACK + RETRIG '
+    '(PAD-Auswahl, smp42 TRACK + RETRIG) unveraendert' % [x[1] for x in res + res2],
+    all(x[0] for x in res) and [x[1] for x in res] == [2, 2, 1, 2, 2, 2, 3, 3, 2, 3] and res2[0][1] == 1)
+leds.clear(); e.held = {2, 4}; d0_, g_ = e.call(S['CALEDS'], 0, 1, count=50000)
+chk('CALEDS mit TRACK + RETRIG (PAD-Auswahl): keine Control-All-LEDs (smp42)', leds == [] and g_)
+e.held = set()
+e.w8(C.CA_SEL, 0)
+
 # ------------------------------------------------------------------ 3. Umschalten: echter consumeKeyEvent, Fall 13
 from unicorn import Uc, UC_ARCH_M68K, UC_MODE_BIG_ENDIAN
 PRESS, HOLD, LONG, REL, FREL = 0x1, 0x9, 0x29, 0x10, 0x12
@@ -171,6 +269,8 @@ class MS:
         return s.u.reg_read(mk.UC_M68K_REG_D0), good
     def key(s, flags, held=(), code=13):
         s.held = set(held)
+        if flags & 1:                                # wie die Tastenabfrage: zuletzt gedrueckte Taste (Matrix-Index)
+            s.u.mem_write(0x40148CD8, bytes(s.u.mem_read(0x4010AE5C + 4 * code, 4)))
         s.call(0x4007238C, s.ev, code, flags, 1234, 0x7F); s.log.clear()
         d0, good = s.call(0x4001C0D2, s.this, s.ev); return list(s.log), good
     r8 = lambda s, a: s.u.mem_read(a, 1)[0]
@@ -200,7 +300,7 @@ m.w8(C.CTRL_MODE, 0)
 seq = [m.key(PRESS)[0], m.key(REL)[0]]
 chk('SETTINGS ohne TRACK: Menue, Modus unveraendert', seq == [[], ['OPEN']] and m.r8(C.CTRL_MODE) == 0)
 seq = [m.key(PRESS, (2,))[0], m.key(LONG, (2,))[0], m.key(REL, (2,))[0]]
-chk('TRACK + SETTINGS lang: Projekt speichern wie ohne TRACK, kein Umschalten', seq == [[], [], ['SAVE']] and m.r8(C.CTRL_MODE) == 0)
+chk('TRACK + SETTINGS lang: Projekt speichern wie ohne TRACK, kein Umschalten %s' % seq, seq == [[], [], ['SAVE']] and m.r8(C.CTRL_MODE) == 0)
 seq = [m.key(PRESS, (2, 1))[0], m.key(FREL, (2, 1))[0]]
 chk('FUNC + TRACK + SETTINGS: Muster speichern wie bisher, kein Umschalten', seq == [[], ['QSAVE']] and m.r8(C.CTRL_MODE) == 0)
 # Drehung waehrend SETTINGS gehalten (kein eigener Gesten-Treffer): CME merkt sie, Loslassen schaltet nicht um

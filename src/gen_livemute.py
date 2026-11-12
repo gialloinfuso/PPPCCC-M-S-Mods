@@ -12,20 +12,30 @@ FUNC, RESUME = 0x4005894a, 0x40058950
 FUNC_CK = (6, '8d1503d38f264a9b0be0700a53c1e2e61354803cc529f54092a511ae826bca7f')   # Laenge + SHA-256 der ersetzten Originalbefehle
 
 def build():
+    """Anfang der Live-Noten-Funktion 0x4005894a (a2 = Nachricht): Note-On fuer einen gemuteten Track verwerfen"""
+    from cfasm import asm, done as adone
     a = A(ENTRY)
-    a.orig(FUNC, 6)                                  # ersetzte Originalbefehle (aus dem Image)
-    a.w(0x7001, 0xB0AA, 0x000C)                      # moveq #1,d0 ; cmp.l 12(a2),d0   (Note-On?)
-    a.bcc(BNE, 'cont')
-    a.w(0x2212, 0x2F01)                              # move.l (a2),d1 (Track) ; push
-    a.w(0x4EB9); a.l32(0x400CF866)                   # jsr singleton
-    a.w(0x2F00, 0x4EB9); a.l32(0x4000EB90)           # push ; jsr -> Kit
-    a.w(0x588F, 0x2F00, 0x4EB9); a.l32(GETM)         # pop ; push Kit ; jsr getMute(kit, track)
-    a.w(0x508F, 0x4A00)                              # addq.l #8,a7 ; tst.b d0
-    a.bcc(BEQ, 'cont')
-    a.w(0x245F, 0x4E75)                              # movea.l (a7)+,a2 ; rts   (Note verwerfen)
-    a.label('cont')
-    a.w(0x4EF9); a.l32(RESUME)                       # jmp 0x40058950
-    return a.done()
+    asm(a, f'''
+            orig    {FUNC:#x},6              ; ersetzte Originalbefehle (aus dem Image)
+            moveq   #1,d0
+            cmp.l   12(a2),d0                ; Note-On?
+            bne     cont
+            move.l  (a2),d1                  ; Track
+            move.l  d1,-(sp)
+            jsr     0x400cf866               ; Singleton
+            move.l  d0,-(sp)
+            jsr     0x4000eb90               ; -> Kit
+            addq.l  #4,sp
+            move.l  d0,-(sp)
+            jsr     {GETM:#x}                ; Mute(Kit, Track)
+            addq.l  #8,sp
+            tst.b   d0
+            beq     cont
+            movea.l (sp)+,a2                 ; Note verwerfen
+            rts
+    cont:   jmp     {RESUME:#x}
+    ''')
+    return adone(a)
 
 def tweak(stock):
     code = build()

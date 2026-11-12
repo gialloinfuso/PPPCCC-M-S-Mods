@@ -244,7 +244,7 @@ e2 = emu()
 for t in range(6): setp(e2, t)
 _, _, n0 = block(e2, [sine(200, 0.4, 32)] * 6, count=True)
 print('     Kosten: %d Befehle pro Block (6 Spuren an), %d (alle aus); Block = ~166000 Takte' % (n, n0))
-chk('Kosten < 7000 Befehle pro Block', n < 7000)
+chk('Kosten < 7300 Befehle pro Block (smp13: + 1 mac je Sample statt <<)', n < 7300)
 
 # ---------------- 2a Knopf-Zuordnung
 e = emu()
@@ -277,10 +277,19 @@ chk('Haken 0x4001c4ba = jmp RT ; nop', IMG[G.RT_HOOK - BASE:][:8] == C.jmp(S['RT
 VIEW, EV = 0x4F043000, 0x4F043100
 t0 = [100]
 def popup(): return e.cstr(e.r32(C.VARS + C.V_VAL)) if e.r32(C.VARS + C.V_VAL) else ''
-def gate(held=()):
+def grel(bits):
+    """smp24: GATE-Zweig ab 0x4001c326 (d3 = Ereignis, a2 = Ansicht) bis 0x4001c32e (Ereignis gepusht, BIT4 gelaufen)"""
+    e.w32(EV + 0x10, bits)
+    sp = STACK - 0x300; e.u.reg_write(mk.UC_M68K_REG_A7, sp); e.u.reg_write(mk.UC_M68K_REG_D3, EV); e.u.reg_write(mk.UC_M68K_REG_A2, VIEW)
+    e.u.emu_start(G.GREL_HOOK, G.GREL_BACK, count=20000)
+    return (e.u.reg_read(mk.UC_M68K_REG_PC) == G.GREL_BACK and e.u.reg_read(mk.UC_M68K_REG_A7) == sp - 4 and e.r32(sp - 4) == EV
+            and e.u.reg_read(mk.UC_M68K_REG_D0) & 0xff == (bits >> 4) & 1 and e.u.reg_read(mk.UC_M68K_REG_A2) == VIEW)
+def gate(held=(), rel=0):
+    """GATE druecken (KEYH) und loslassen (GREL, Bits rel); d = Umschaltungen nach dem Druecken / nach dem Loslassen"""
     e.held = set(held); e.w32(C.VARS + C.V_VAL, 0); n = len(acts)
-    _, good = e.call(S['KEYH'], regs={mk.UC_M68K_REG_A2: VIEW})
-    return good, e.r32(G.MODE) == G.MAGIC, len(acts) - n, popup()
+    _, good = e.call(S['KEYH'], regs={mk.UC_M68K_REG_A2: VIEW}); n1 = len(acts) - n
+    good &= grel(rel)
+    return good, e.r32(G.MODE) == G.MAGIC, len(acts) - n, popup(), n1
 def retrig(bits):
     """echter Fall RETRIG im Hauptbildschirm ab 0x4001c4ba (d3 = Ereignis), Halt in 0x4001c4c2 (nach den verschobenen
     Befehlen: Ereignis gepusht, FUNC-Abfrage der Firmware gelaufen)"""
@@ -294,7 +303,12 @@ def retrig(bits):
             and e.u.reg_read(mk.UC_M68K_REG_D0) & 0xff == (bits >> 1) & 1)
     return good, e.r32(G.MODE) == G.MAGIC, popup()
 r = gate()
-chk('GATE allein: macht was GATE immer macht (this, 0x2d), kein Modus', r[0] and not r[1] and r[2] == 1 and acts[-1] == (VIEW, 0x2D))
+chk('GATE allein: schaltet beim Loslassen um (this, 0x2d), nicht beim Druecken (smp24), kein Modus',
+    r[0] and not r[1] and r[2] == 1 and r[4] == 0 and acts[-1] == (VIEW, 0x2D) and e.r32(G.GP) == 0)
+n = len(acts); g1 = grel(0); g2 = grel(16)
+chk('GATE loslassen ohne vorheriges Druecken: nichts', g1 and g2 and len(acts) == n)
+r = gate(rel=2)
+chk('GATE, mit FUNC losgelassen: kein Umschalten (FUNC + GATE = Click-Menue der Firmware)', r[0] and r[2] == 0 and e.r32(G.GP) == 0)
 q1 = retrig(1); q2 = retrig(0)
 chk('RETRIG antippen (Modus aus): nichts, Firmware-Weg unveraendert', q1[0] and q2[0] and not q2[1] and q2[2] == '')
 retrig(1); r = gate((G.KEY_RETRIG,)); q = retrig(0)
@@ -318,6 +332,48 @@ chk('Knopf ohne gehaltenes RETRIG zaehlt nicht: Antippen beendet', not q2[1])
 retrig(1); gate((G.KEY_RETRIG,)); retrig(0)
 q = retrig(1); r = gate((G.KEY_RETRIG,)); q2 = retrig(0)
 chk('RETRIG + GATE im Modus: bleibt an', r[1] and q2[1])
+# ---------------- 2b' smp24: GATE + PLAY = Filter-Reset (Transport-Handler 0x4002439a, Haken PLH)
+chk('Haken 0x4001c326 = jmp GREL ; nop, 0x400243d6 = jmp PLH', IMG[G.GREL_HOOK - BASE:][:8] == C.jmp(S['GREL']) + b'\x4e\x71'
+    and IMG[G.PLH_HOOK - BASE:][:6] == C.jmp(S['PLH']))
+setp = []
+def stub(addr, ret, rec=None):
+    def f(u, a, z, _):
+        sp = u.reg_read(mk.UC_M68K_REG_A7)
+        if rec is not None: rec.append(tuple(e.r32(sp + 4 + 4 * i) for i in range(6)))
+        u.reg_write(mk.UC_M68K_REG_D0, ret); u.reg_write(mk.UC_M68K_REG_D1, 0xBAD1); u.reg_write(mk.UC_M68K_REG_A0, 0xBAD0)
+        u.reg_write(mk.UC_M68K_REG_A1, 0xBAD2)
+        u.reg_write(mk.UC_M68K_REG_PC, e.r32(sp)); u.reg_write(mk.UC_M68K_REG_A7, sp + 4)
+    e.u.hook_add(UC_HOOK_CODE, f, begin=addr, end=addr)
+sobj = []
+for addr, ret, rec in ((C.SEL_A, 0x4F0A0000, None), (G.KIT_OF, 0x4F0B0000, None), (C.SEL_B, 0x4F0C0000, None), (C.SEL_C, 3, None),
+                       (G.SOBJ, 0x4F0D0000, sobj), (G.SETP, 0, setp)):
+    stub(addr, ret, rec)
+def play(code, bits, held=()):
+    e.held = set(held); e.w32(EV + 0x10, bits); e.w32(C.VARS + C.V_VAL, 0); n = len(setp)
+    sp = STACK - 0x300; e.u.reg_write(mk.UC_M68K_REG_A7, sp); e.u.reg_write(mk.UC_M68K_REG_D2, EV); e.u.reg_write(mk.UC_M68K_REG_D4, code)
+    for i, r in enumerate(KEEP):
+        if r not in (mk.UC_M68K_REG_D2, mk.UC_M68K_REG_D4): e.u.reg_write(r, 0xC0DE0000 + i)
+    stops = (G.PL_PLAY, G.PL_NEXT, G.PL_DONE)
+    hs = [e.u.hook_add(UC_HOOK_CODE, lambda u, a, z, _: u.emu_stop(), begin=x, end=x) for x in stops]
+    e.u.emu_start(G.PLH_HOOK, 0, count=50000)
+    for h in hs: e.u.hook_del(h)
+    pc = e.u.reg_read(mk.UC_M68K_REG_PC)
+    good = e.u.reg_read(mk.UC_M68K_REG_A7) == sp and all(e.u.reg_read(r) == 0xC0DE0000 + i for i, r in enumerate(KEEP)
+                                                         if r not in (mk.UC_M68K_REG_D2, mk.UC_M68K_REG_D4))
+    return pc, e.u.reg_read(mk.UC_M68K_REG_D4), setp[n:], popup(), good
+r = play(10, 1)
+chk('PLAY ohne GATE: Firmware (0x4002441a), kein Reset', r[0] == G.PL_PLAY and r[2] == [] and r[4])
+r = play(11, 1, (7,)); r2 = play(9, 1, (7,))
+chk('STOP / REC mit GATE: Firmware-Weg (0x400243dc)', r[0] == G.PL_NEXT and r2[0] == G.PL_NEXT and r[2] == r2[2] == [])
+e.w32(G.GP, 1); r = play(10, 1, (7,))
+chk('GATE + PLAY: Filter der Spur 3 zurueck %s, Popup FILTER RESET, PLAY verbraucht (d4 = 1), GATE wird beim Loslassen nicht umgeschaltet'
+    % [(x[1], hex(x[2])) for x in r[2]],
+    r[0] == G.PL_DONE and r[1] == 1 and r[2] == [(0x4F0D0000, d, v, 3, 0, 1) for d, v in ((1, 0x7F00), (2, 0), (3, 0x4000), (4, 0x4000))]
+    and r[3] == 'RESET' and e.cstr(e.r32(C.VARS + C.V_L1)) == 'FILTER' and e.r32(G.GP) == 0 and r[4] and sobj[-1][:2] == (0x4F0B0000, 3))
+n = len(acts); g = grel(0)
+chk('  danach GATE loslassen: kein Umschalten', g and len(acts) == n)
+r = play(10, 0, (7,)); r2 = play(10, 1 | 8, (7,))
+chk('GATE + PLAY loslassen / Wiederholung: verbraucht, kein weiterer Reset', r[0] == r2[0] == G.PL_DONE and r[2] == r2[2] == [])
 # ---------------- 2c Speichern / Laden (echte Funktionen)
 e = emu()
 SND, REC1, SND2 = 0x4F044000, 0x4F045000, 0x4F046000
@@ -347,8 +403,8 @@ es.u.mem_write(SND, bytes(snd)); es.u.mem_write(REC1, bytes(256)); es.call(G.SV2
 srec = bytes(es.u.mem_read(REC1, 128))
 mine = res['v2'][2]
 diff = [i for i in range(128) if srec[i] != mine[i]]
-chk('Satz wie Stock bis auf +64/65, +82/83, +88..91 (+84 lfo-amount) (Unterschiede an %s)' % diff,
-    set(diff) <= {64, 65, 82, 83, 88, 89, 90, 91} | ({84} if not ALONE else set()))
+chk('Satz wie Stock bis auf +64/65, +82/83, +86 (Core-Attack), +88..91 +80/81 (Core: k 24 / 27), +88..91 (+84 lfo-amount, +76..79 sampler) (Unterschiede an %s)' % diff,
+    set(diff) <= {64, 65, 80, 81, 82, 83, 86, 88, 89, 90, 91} | ({84, 76, 77, 78, 79} if not ALONE else set()))
 # alter Satz (Plaetze 0): Filter offen, Env / Decay Mitte
 e.u.mem_write(REC1, srec); e.u.mem_write(SND2, bytes(256)); e.call(G.LD_HOOK, SND2, REC1, count=200000)
 back = bytes(e.u.mem_read(SND2, 128))

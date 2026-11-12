@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PPPCCC M:C Mods – Flasher</title>
+<meta name="description" content="Build and flash PPPCCC M:C Mods in your browser, from your own official Model:Cycles OS 1.13 file. Nothing is uploaded.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="../">PPPCCC <span>M:C Mods</span></a>
+    <nav>
+      <a href="../#patches">Features</a>
+      <a href="#back">Back to official</a>
+      <a href="#help">Help</a>
+      <a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div class="eyebrow">Flasher · v<span id="version">2.3.0</span></div>
+    <h1>Build and flash in your browser</h1>
+    <p class="lead">Choose your device, give the page your own official firmware file, pick the patches, and flash. Everything
+      happens on your computer: <b>no file is uploaded</b>. The page builds exactly the same file as the build tool of the
+      repository and checks every step.</p>
+  </div>
+
+  <!-- ===================================================== 1 -->
+  <section class="step" id="s1">
+    <h2><span class="n">1</span> Your device</h2>
+    <div class="choices" id="devices">
+      <button class="choice" data-dev="cycles"><b>Model:Cycles</b><span>runs the official Model:Cycles OS</span></button>
+      <button class="choice" data-dev="samples"><b>Model:Samples</b><span>gets the Cycles OS with the mods</span></button>
+    </div>
+    <div id="smp-mode" class="sub-choice" hidden>
+      <label><input type="radio" name="smpmode" value="first" checked> <b>First time:</b> my Model:Samples still runs the
+        Samples OS</label>
+      <label><input type="radio" name="smpmode" value="update"> <b>Update:</b> it already runs a Cycles OS (an earlier build of
+        these mods, or Modded-Cycles)</label>
+    </div>
+  </section>
+
+  <!-- ===================================================== 2 -->
+  <section class="step" id="s2" data-locked>
+    <h2><span class="n">2</span> Your official firmware</h2>
+    <p class="sub" id="need-cycles">The official <code>model-cycles_OS1.13.syx</code> from
+      <a href="https://www.elektron.se">elektron.se</a> (Support › Downloads).</p>
+    <p class="sub" id="need-samples" hidden>Two official files from <a href="https://www.elektron.se">elektron.se</a> (Support › Downloads):
+      <code>model-cycles_OS1.13.syx</code> and <code>model-samples_OS1.13.syx</code>. The page puts the Cycles OS
+      into the Model:Samples container (the cross-flash of Modded-Cycles), so the Samples OS can still be flashed back over
+      USB. A Cycles OS for the Model:Samples that you already made with Modded-Cycles' <code>crossflash.py --to samples</code>
+      works too, instead of the two files.</p>
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept=".syx" multiple>
+      <span><b>Choose files</b> or drop them here</span>
+    </label>
+    <ul class="files" id="files"></ul>
+  </section>
+
+  <!-- ===================================================== 3 -->
+  <section class="step" id="s3" data-locked>
+    <h2><span class="n">3</span> Patches</h2>
+    <p class="sub">Tick what you want. What a patch needs is ticked with it; the core is added automatically.
+      <a href="../#patches">What each patch does</a>.</p>
+    <div class="tools"><button class="small" id="all">All</button><button class="small" id="none">None</button>
+      <span id="count" class="note"></span></div>
+    <div id="core-row" class="patch core"></div>
+    <div id="list" class="list"></div>
+  </section>
+
+  <!-- ===================================================== 4 -->
+  <section class="step" id="s4" data-locked>
+    <h2><span class="n">4</span> Build and flash</h2>
+    <button class="btn primary" id="build">Build the firmware</button>
+    <p id="build-status" class="status-line"></p>
+    <div id="result" hidden>
+      <div class="result-box" id="result-text"></div>
+      <h3>Download</h3>
+      <p class="note">Send the file with Elektron Transfer or any SysEx tool — or directly from here, below.</p>
+      <div class="btns" id="downloads"></div>
+      <h3>Send it from here (Web MIDI)</h3>
+      <ol class="howto" id="howto"></ol>
+      <label class="confirm"><input type="checkbox" id="backed-up"> I have backed up my projects and samples (Elektron
+        Transfer) and know how to get back to the official OS (below).</label>
+      <div class="btns">
+        <button class="btn" id="midi-connect">Find MIDI devices</button>
+        <select id="midi-port" hidden></select>
+        <button class="btn primary" id="send" disabled>Send</button>
+        <button class="btn" id="stop" hidden>Stop</button>
+      </div>
+      <details class="adv"><summary>Speed</summary>
+        <label>Time per message, as a multiple of a MIDI cable's speed: <input id="pace" type="number" value="1.4" min="1"
+          max="5" step="0.1"></label>
+        <p class="note">Raise it if the device reports an error while receiving.</p>
+      </details>
+      <progress id="progress" hidden></progress>
+      <p id="send-status" class="status-line"></p>
+    </div>
+  </section>
+
+  <!-- ===================================================== info -->
+  <section class="info" id="back">
+    <h2>Back to the official firmware</h2>
+    <ul>
+      <li><b>Model:Cycles:</b> send the official <code>model-cycles_OS1.13.syx</code> like any OS update (from the start-up
+        menu: hold <kbd>FUNC</kbd> while switching on, then OS UPGRADE).</li>
+      <li><b>Model:Samples:</b> the official Samples OS goes back over USB in the Cycles transport:
+        <code>python3 tools/vendor/crossflash.py --cycles model-cycles_OS1.13.syx --samples model-samples_OS1.13.syx
+        --back-samples</code> makes that file (see Modded-Cycles' notes/41). The start-up menu of the Model:Samples (MIDI IN)
+        always remains as a fallback.</li>
+    </ul>
+  </section>
+
+  <section class="info" id="help">
+    <h2>Help</h2>
+    <details><summary>The page says my file is not the official one</summary>
+      <p>Only the official OS 1.13 files are accepted (checked by SHA-256). Download them again from elektron.se, and do not use
+      a file that was already modified.</p></details>
+    <details><summary>“Find MIDI devices” finds nothing, or Send is not available</summary>
+      <p>Web MIDI with SysEx works in Chrome, Edge and Opera on a desktop computer; allow MIDI access when the browser asks.
+      Connect the device over USB and close other programs that use it (Elektron Transfer, a DAW). Safari and Firefox:
+      download the file and send it with Elektron Transfer.</p></details>
+    <details><summary>The transfer stopped or the device shows an error</summary>
+      <p>Nothing is lost: switch the device off and on, open the start-up menu (hold <kbd>FUNC</kbd> while switching on,
+      then OS UPGRADE) and send the file again, with a higher “Speed” value. With a Model:Samples on the first flash, send the
+      <code>_smp-os</code> file.</p></details>
+    <details><summary>Which file do I need on a Model:Samples?</summary>
+      <p><b>First flash</b> (still on the Samples OS): the <code>_smp-os.syx</code>, from the Samples OS or its start-up menu.
+      <b>Later updates</b> (a Cycles OS with the Samples key already runs): the <code>_cyc-os.syx</code>.</p></details>
+    <details><summary>Can I check the file myself?</summary>
+      <p>Yes: with Python, <code>tools/build.py</code> of the repository builds the same file from the same patches, byte for
+      byte. The page shows the SHA-256 of the result.</p></details>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">PPPCCC M:C Mods · not affiliated with Elektron · As with any firmware mod: use at your own risk.
+    · Container code: a JavaScript port of drumkilla's mtlib and Modded-Cycles' aplib_grow / crossflash (MIT) ·
+    <a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods">GitHub</a> · <a href="https://ko-fi.com/pppccc">Ko-fi</a></div>
+</footer>
+<script type="module" src="app.js"></script>
+</body>
+</html>

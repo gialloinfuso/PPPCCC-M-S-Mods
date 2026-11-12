@@ -3,23 +3,21 @@
 
 usage: python3 src/regen.py <section_3_MAIN_OS.bin of the official Model:Cycles OS 1.13> [<work dir>]
 
-Needs checkouts of https://github.com/18nelli18/Modded-Cycles (folder "Modded-Cycles", for tools/sprites.py) and
-https://github.com/drumkilla/elektron-model-tweaks (folder "elektron-model-tweaks", for 01-latching-mute.json, which
-the overlap check applies first) in the repository root, and capstone (pip install capstone).
+Needs a checkout of https://github.com/18nelli18/Modded-Cycles (folder "Modded-Cycles", for tools/sprites.py, the list
+of free sprite masks) in the repository root, plus capstone and Pillow (pip install capstone pillow).
 
 The generators were written against a development layout. This script builds it in the work dir (default:
 build/regen, git-ignored):
 
   out/section_3_MAIN_OS.bin   your base image
-  solo/                       src/*.py   (shared code: assembler, effect cores, popup fonts, groove tables)
+  solo/                       src/*.py   (shared code: effect cores, popup fonts, groove tables)
   v2/                         src/v2/*.py (one generator per patch, gen_all.py runs them all)
-  grooves/, Modded-Cycles, elektron-model-tweaks
+  grooves/, Modded-Cycles
 
 gen_all.py writes the development format to v2/out/: with the original bytes in "old", and in "orig" the places
 where a patch's code holds original firmware bytes (instructions a hook moves; the generators copy them from your
 image). That stays on your machine. This script reduces every write the same way as the published patches
-(tools/apply_patches.py to_public: len + SHA-256, "orig" -> zeros + "from_original") and checks that the result is
-identical to patches/*.json.
+(tools/apply_patches.py to_public: len + SHA-256, "orig" -> zeros + "from_original") and checks that the result is identical to patches/*.json.
 """
 import json
 import os
@@ -31,7 +29,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 import apply_patches  # noqa: E402  (to_public: the same reduction as the published patches)
-CHECKOUTS = ('Modded-Cycles', 'elektron-model-tweaks')
+CHECKOUTS = ('Modded-Cycles',)
 # v1.0.0 generators (development names), used by the tests as the reference for the v2 sound and gesture code
 V1GEN = [('gen_solo.py', '62-mute-solo'), ('gen_livemute.py', '63-live-mute'), ('gen_holdmute_113.py', '64-hold-mute-v3'),
          ('gen_delaynotes_113.py', '65-delay-notes'), ('gen_chorus_113.py', '66-chorus'), ('gen_phaser_113.py', '67-phaser'),
@@ -54,6 +52,8 @@ def make_env(base, work, v1=False):
     shutil.copytree(ROOT / 'grooves', work / 'grooves')
     for need in CHECKOUTS:
         os.symlink(ROOT / need, work / need)
+    if (ROOT / 'elektron-model-tweaks').is_dir():                # optional: tests compare with drumkilla's tweaks
+        os.symlink(ROOT / 'elektron-model-tweaks', work / 'elektron-model-tweaks')
     subprocess.run([sys.executable, 'v2/gen_all.py'], cwd=work, check=True, stdout=subprocess.DEVNULL)
     if v1:
         for gen, name in V1GEN:

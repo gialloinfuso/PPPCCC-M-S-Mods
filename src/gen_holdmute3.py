@@ -25,73 +25,132 @@ H1, H2, HC = 0x4001D05E, 0x4001D0FC, 0x400081F2
 H1_CK, H2_CK = (6, '5ce8271cb6586ad4860e3aa6705562a63e60438793d61114cc7010405aa0c780'), (6, '62084066504316135ae81e12d4ecc99c9919db42425cc8fa2be3ea0a8ef3bbc4')   # Laenge + SHA-256 der ersetzten Originalbefehle
 BEQ, BNE, BCS, BCC = 0x7, 0x6, 0x5, 0x4
 
-def getkit(a):                    # d0 = Kit
-    a.w(0x4EB9); a.l32(SING); a.w(0x2F00, 0x4EB9); a.l32(KITF); a.w(0x588F)
+def getkit():
+    """cfasm-Text: d0 = Kit"""
+    return f'''
+            jsr     {SING:#x}
+            move.l  d0,-(sp)
+            jsr     {KITF:#x}
+            addq.l  #4,sp
+'''
 
 def build_a():
+    from cfasm import asm, done as adone
     a = A(MA)
-    # ---- S1: Pad-Note-On (Stack: ret, a2, track, note, vel, retrig)
-    a.w(0x4EB9); a.l32(PLAYING); a.w(0x4A80)         # jsr Sequencer-laeuft ; tst.l d0
-    a.bcc(BEQ, 's1orig')                              # gestoppt: Pad spielt normal
-    a.w(0x202F, 0x0008, 0x7205, 0xB280)               # move.l 8(a7),d0 ; moveq #5,d1 ; cmp.l d0,d1
-    a.bcc(BCS, 's1orig')
-    a.w(0xE988, 0x41F9); a.l32(ST); a.w(0xD1C0)       # lsl.l #4,d0 ; lea ST,a0 ; adda.l d0,a0
-    a.w(0x20B9); a.l32(TIMER)                         # move.l TIMER,(a0)
-    a.w(0x2228, 0x0004, 0x0281); a.l32(0x300)         # d1 = alter Zustand & 0x300
-    a.w(0x202F, 0x000C, 0x5280, 0x8081, 0x2140, 0x0004)   # d0 = note+1 | d1 ; move.l d0,4(a0)
-    a.w(0x216F, 0x0010, 0x0008, 0x216F, 0x0014, 0x000C)   # vel, retrig
-    a.w(0x4E75)
-    a.label('s1orig')
-    a.orig(H1, 6); a.w(0x4EF9); a.l32(H1 + 6)        # ersetzte Originalbefehle (aus dem Image), weiter
-    # ---- SC: 30-Hz-Tick (Stack: d0 als Argument fuer 0x40090f48)
-    a.label('sc')
-    a.w(0x4FEF, 0xFFF4, 0x48D7, 0x040C)               # lea -12(a7),a7 ; movem.l d2-d3/a2,(a7)
-    a.w(0x7400, 0x45F9); a.l32(ST)                    # moveq #0,d2 ; lea ST,a2
-    a.label('loop')
-    a.w(0x202A, 0x0004); a.bcc(BEQ, 'next')           # d0 = Zustand ; leer
-    a.w(0x0800, 0x0009); a.bcc(BNE, 'next')           # btst #9,d0 ; schon erledigt
-    a.w(0x2039); a.l32(TIMER); a.w(0x9092)            # d0 = TIMER ; sub.l (a2),d0
-    a.w(0x0C80); a.l32(HOLD); a.bcc(BCS, 'next')
-    a.w(0x202A, 0x0004, 0x08C0, 0x0009, 0x2540, 0x0004)   # bset #9 -> erledigt
-    getkit(a)
-    a.w(0x2600)                                       # move.l d0,d3  (Kit)
-    a.w(0x2F02, 0x2F03, 0x4EB9); a.l32(GETM); a.w(0x508F, 0x4A00)   # getMute(kit,track) ; addq #8 ; tst.b
-    a.bcc(BNE, 'next')                                # war schon gemutet: nichts anfassen
-    a.w(0x4878, 0x0001, 0x4878, 0x0001, 0x2F02, 0x2F03, 0x4EB9); a.l32(SETM); a.w(0x4FEF, 0x0010)
-    a.w(0x202A, 0x0004, 0x08C0, 0x0008, 0x2540, 0x0004)   # bset #8 -> von uns gemutet
-    a.label('next')
-    a.w(0x5282, 0x45EA, 0x0010, 0x7006, 0xB082)       # addq #1,d2 ; lea 16(a2),a2 ; moveq #6,d0 ; cmp.l d2,d0
-    a.bcc(BNE, 'loop')
-    a.w(0x4CD7, 0x040C, 0x4FEF, 0x000C, 0x4EF9); a.l32(TICK_NEXT)   # restore ; jmp naechstes Glied (OS 2.0)
-    code = a.done()
+    asm(a, f'''
+    ; ---- S1: Pad-Note-On (Stapel: ret, a2, track, note, vel, retrig)
+            jsr     {PLAYING:#x}             ; Sequencer laeuft?
+            tst.l   d0
+            beq     s1orig                   ; gestoppt: Pad spielt normal
+            move.l  8(sp),d0
+            moveq   #5,d1
+            cmp.l   d0,d1
+            bcs     s1orig
+            lsl.l   #4,d0
+            lea     {ST:#x},a0
+            adda.l  d0,a0                    ; Zustand des Tracks (16 B)
+            move.l  {TIMER:#x},(a0)          ; Zeitpunkt des Anschlags
+            move.l  4(a0),d1
+            andi.l  #0x300,d1                ; alter Zustand: nur Bits 8 / 9
+            move.l  12(sp),d0
+            addq.l  #1,d0
+            or.l    d1,d0
+            move.l  d0,4(a0)                 ; Note + 1
+            move.l  16(sp),8(a0)             ; Velocity
+            move.l  20(sp),12(a0)            ; Retrig
+            rts
+    s1orig: orig    {H1:#x},6                ; ersetzte Originalbefehle (aus dem Image), weiter
+            jmp     {H1 + 6:#x}
+    ; ---- SC: 30-Hz-Tick (Stapel: d0 als Argument fuer 0x40090f48)
+    sc:     lea     -12(sp),sp
+            movem.l d2-d3/a2,(sp)
+            moveq   #0,d2
+            lea     {ST:#x},a2
+    loop:   move.l  4(a2),d0                 ; Zustand
+            beq     next                     ; leer
+            btst    #9,d0
+            bne     next                     ; schon erledigt
+            move.l  {TIMER:#x},d0
+            sub.l   (a2),d0
+            cmpi.l  #{HOLD:#x},d0
+            bcs     next                     ; noch nicht lange genug gehalten
+            move.l  4(a2),d0
+            bset    #9,d0                    ; erledigt
+            move.l  d0,4(a2)
+{getkit()}
+            move.l  d0,d3                    ; Kit
+            move.l  d2,-(sp)
+            move.l  d3,-(sp)
+            jsr     {GETM:#x}                ; Mute(Kit, Track)
+            addq.l  #8,sp
+            tst.b   d0
+            bne     next                     ; war schon gemutet: nichts anfassen
+            pea     1.w
+            pea     1.w
+            move.l  d2,-(sp)
+            move.l  d3,-(sp)
+            jsr     {SETM:#x}                ; muten
+            lea     16(sp),sp
+            move.l  4(a2),d0
+            bset    #8,d0                    ; von uns gemutet
+            move.l  d0,4(a2)
+    next:   addq.l  #1,d2
+            lea     16(a2),a2
+            moveq   #6,d0
+            cmp.l   d2,d0
+            bne     loop
+            movem.l (sp),d2-d3/a2
+            lea     12(sp),sp
+            jmp     {TICK_NEXT:#x}           ; naechstes Glied der Tick-Kette
+    ''')
+    code = adone(a)
     assert len(code) <= 272, len(code)
     return code, a.lab
 
 def build_b(s1orig):
+    from cfasm import asm, done as adone
     a = A(MB)
-    # ---- S2: Pad-Note-Off (Stack: ret, a2, track, note)
-    a.w(0x202F, 0x0008, 0x7205, 0xB280)
-    a.bcc(BCS, 's2orig')
-    a.w(0xE988, 0x41F9); a.l32(ST); a.w(0xD1C0)
-    a.w(0x2228, 0x0004); a.bcc(BEQ, 's2orig')         # d1 = Zustand
-    a.w(0x42A8, 0x0004)                               # clr.l 4(a0)
-    a.w(0x0801, 0x0009); a.bcc(BNE, 's2hold')         # btst #9,d1 : Halten schon erkannt
-    a.w(0x2039); a.l32(TIMER); a.w(0x9090)
-    a.w(0x0C80); a.l32(HOLD); a.bcc(BCC, 's2hold')
-    a.w(0x0281); a.l32(0xFF)                          # andi.l #0xFF,d1
-    a.w(0x2F28, 0x000C, 0x2F28, 0x0008, 0x5381, 0x2F01)
-    a.w(0x2F2F, 0x0014, 0x2F2F, 0x0014)
-    a.w(0x4EB9); a.l32(s1orig)
-    a.w(0x4FEF, 0x0014)
-    a.label('s2orig')
-    a.orig(H2, 6); a.w(0x4EF9); a.l32(H2 + 6)        # ersetzte Originalbefehle (aus dem Image), weiter
-    a.label('s2hold')
-    a.w(0x0801, 0x0008); a.bcc(BEQ, 's2done')         # btst #8,d1 : von uns gemutet?
-    getkit(a)                                         # d0 = Kit
-    a.w(0x4878, 0x0001, 0x42A7, 0x2F2F, 0x0010, 0x2F00, 0x4EB9); a.l32(SETM); a.w(0x4FEF, 0x0010)
-    a.label('s2done')
-    a.w(0x4E75)
-    code = a.done()
+    asm(a, f'''
+    ; ---- S2: Pad-Note-Off (Stapel: ret, a2, track, note)
+            move.l  8(sp),d0
+            moveq   #5,d1
+            cmp.l   d0,d1
+            bcs     s2orig
+            lsl.l   #4,d0
+            lea     {ST:#x},a0
+            adda.l  d0,a0
+            move.l  4(a0),d1                 ; Zustand
+            beq     s2orig
+            clr.l   4(a0)
+            btst    #9,d1
+            bne     s2hold                   ; Halten schon erkannt
+            move.l  {TIMER:#x},d0
+            sub.l   (a0),d0
+            cmpi.l  #{HOLD:#x},d0
+            bcc     s2hold
+            andi.l  #0xff,d1                 ; kurz angetippt: Note-On jetzt nachholen
+            move.l  12(a0),-(sp)
+            move.l  8(a0),-(sp)
+            subq.l  #1,d1
+            move.l  d1,-(sp)
+            move.l  20(sp),-(sp)
+            move.l  20(sp),-(sp)
+            jsr     {s1orig:#x}
+            lea     20(sp),sp
+    s2orig: orig    {H2:#x},6                ; ersetzte Originalbefehle (aus dem Image), weiter
+            jmp     {H2 + 6:#x}
+    s2hold: btst    #8,d1
+            beq     s2done                   ; von uns gemutet?
+{getkit()}
+            pea     1.w
+            clr.l   -(sp)
+            move.l  16(sp),-(sp)
+            move.l  d0,-(sp)
+            jsr     {SETM:#x}                ; wieder entmuten
+            lea     16(sp),sp
+    s2done: rts
+    ''')
+    code = adone(a)
     assert len(code) <= 0xB8, len(code)
     return code, a.lab
 

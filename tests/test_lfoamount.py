@@ -17,7 +17,9 @@ OBJ, TEMPO, MASK = 0x4F040000, 0x12345, 0x3F
 DEP = lambda t: OBJ + 14 + 66 * t + 2 * G.K_DEP
 AMT = lambda t: OBJ + 14 + 66 * t + 2 * G.K_AMT
 chk('Haken 0x400597c6 = jsr AMT', IMG[G.LFO_HOOK - BASE:][:6] == C.jsr(S['AMT']))
-chk('Haken 0x4001e814 = jmp W', IMG[G.LOOKUP - BASE:][:6] == C.jmp(S['W']))
+CS = V2SYM['core']
+chk('Knopf-Suche: Haken 0x4001e814 im Core (jmp LKW), lfo-amount in LKSLOT (POST)', IMG[G.LOOKUP - BASE:][:6] == C.jmp(CS['LKW'])
+    and struct.unpack('>I', IMG[CS['LKSLOT'] - BASE:][:4])[0] == S['POST'])
 
 e = Emu(IMG); seen = []; lfo_add = {}
 def lfo(u, a, z, _):
@@ -72,6 +74,10 @@ def emu_lk(img):
         sp = u.reg_read(mk.UC_M68K_REG_A7)
         u.reg_write(mk.UC_M68K_REG_D0, 50 + e2.r32(sp + 0x3C)); u.reg_write(mk.UC_M68K_REG_PC, 0x4001E934)
     e2.u.hook_add(UC_HOOK_CODE, body, begin=0x4001E81E, end=0x4001E81E)
+    def mach(u, a, z, _):                             # smp18: Maschine der Spur (LKX des Cores fragt nur bei FUNC-Eintraegen)
+        sp = u.reg_read(mk.UC_M68K_REG_A7); u.reg_write(mk.UC_M68K_REG_D0, 0)
+        u.reg_write(mk.UC_M68K_REG_PC, e2.r32(sp)); u.reg_write(mk.UC_M68K_REG_A7, sp + 4)
+    e2.u.hook_add(UC_HOOK_CODE, mach, begin=0x4001E318, end=0x4001E318)
     return e2
 bad = []
 e2 = emu_lk(IMG)
@@ -80,9 +86,9 @@ for held in ((), (G.KEY_RETRIG,), (C.KEY_FUNC,), (G.KEY_RETRIG, C.KEY_FUNC), (8,
     for k in range(16):
         for f in (0, 1):
             d0, good = e2.call(G.LOOKUP, VIEW, k, f, -1)
-            wnt = 5 if (k == 10 and G.KEY_RETRIG in held) else 50 + k
+            wnt = 5 if (k == 10 and G.KEY_RETRIG in held) else 6 if (k == 3 and f) else 50 + k   # smp12: FUNC + DECAY = Attack (Core)
             if d0 != wnt or not good: bad.append((held, k, f, d0, good))
-chk('Knopf-Suche: nur LFO SPEED (10) + RETRIG -> Deskriptor 5, sonst Firmware %s' % bad[:2], not bad)
+chk('Knopf-Suche: LFO SPEED (10) + RETRIG -> Deskriptor 5, FUNC + DECAY -> 6 (Core-Attack), sonst Firmware %s' % bad[:2], not bad)
 chk('UI-Objekt 5: Formatierer INT, keine Sonderzeichnung', e2.r32(G.REC + 500 + 0x20) == G.FMT_INT and e2.r32(G.REC + 500 + 0x2C) == 0)
 if not ALONE:
     import g2_trackfilter as TF

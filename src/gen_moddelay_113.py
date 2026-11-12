@@ -65,124 +65,289 @@ NAMES = {0: (b"Digi Send", b"DIGS", b"Digi Time", b"TIME", b"Digi Fdbk", b"FDBK"
 
 
 def build_loop():
-    a = A(M_LOOP); w, l = a.w, a.l32
-    # v2 (25.10.2026, Pips Lastmessung: Digi 77 %, VIBDEL 82 %, CHODEL 87 % Mittel): LFO nur noch einmal je Block (32 Frames)
-    # am Blockende berechnet, dazwischen linear (MOD += DMOD je Frame). Spart ~20 Befehle je Frame.
-    a.label('pre')
-    w(0x202B, PH_, 0x222B, INC, 0xEB89, 0xD081, 0x2740, PH_)   # Phase += 32 * INC
-    w(0x2200); a.bcc(PL, 'tp'); w(0x4681)          # move.l d0,d1 ; bpl tp ; not.l d1
-    a.label('tp')
-    w(0x0481); l(0x40000000); w(0xE081, 0xEE81)    # subi.l #$40000000,d1 ; asr #8 ; asr #7
-    w(0x2401, 0x4C01, 0x2800, 0xE082, 0xEE82)      # d2 = t*t >> 15
-    w(0x4C01, 0x2800, 0xE082, 0xEE82)              # d2 = d2*t >> 15   (t^3)
-    w(0x2E01, 0xD281, 0xD287, 0x9282, 0xE281)      # d1 = (3t - t^3) >> 1
-    w(0x242B, DEP, 0x4C02, 0x1800, 0xE081, 0xEE81) # d1 = d1*DEP >> 15   (mod am Blockende, Q8)
-    w(0x2001, 0x90AB, MOD, 0xEA80, 0x2740, DMOD)   # DMOD = (Ende - MOD) >> 5
-    a.label('loop')
-    # Gleiten wie Digital / Original
-    w(0x200C, 0x9084, 0x2E00, 0xE087, 0xEA87); a.bcc(NE, 'add')
-    w(0x4A80); a.bcc(EQ, 'nost')
-    w(0x2203, 0x0281); l(3); a.bcc(NE, 'nost')
-    w(0x7E01, 0x4A80); a.bcc(PL, 'add'); w(0x7EFF)
-    a.label('add'); w(0xD887)
-    a.label('nost')
-    # LFO linear zwischen den Blockenden: MOD += DMOD
-    w(0x222B, MOD, 0xD2AB, DMOD, 0x2741, MOD)
-    w(0x4AAB, MODEF); a.bcc(NE, 'cho')             # tst.l MODEF(a3) ; bne cho
-    # VIBDEL: y = interp((w - cur - VB) << 8 - mod)
-    w(0x2003, 0x9084, 0x0480); l(VB); w(0xE188, 0x9081)   # d0 = ((w - cur - VB) << 8) - mod
-    a.bcc(BSR, 'ip'); w(0x2200)                    # bsr ip ; move.l d0,d1   (y = Rueckkopplung)
-    a.bcc(BRA, 'fb')
-    a.label('cho')
-    w(0x2003, 0x9084, 0x0280); l(LMASK); w(0xE788, 0x2232, 0x0800, 0x2741, Y0)   # y0 = line[w - cur] -> Y0
-    w(0x2003, 0x9084, 0x0480); l(CB); w(0xE188, 0x90AB, MOD)   # d0 = ((w - cur - CB) << 8) - mod
-    a.bcc(BSR, 'ip'); w(0x2740, YL)
-    w(0x2003, 0x9084, 0x0480); l(CB); w(0xE188, 0xD0AB, MOD)   # d0 = ((w - cur - CB) << 8) + mod
-    a.bcc(BSR, 'ip'); w(0x2740, YR)
-    w(0x222B, Y0)                                  # move.l Y0(a3),d1   (Rueckkopplung vom sauberen Kopf)
-    a.label('fb')
-    # Rueckkopplung + Eingang wie Digital: s = sats(x + g*y)
-    w(0x2E0D)
-    w(0x2001, 0xE080, 0xEE80, 0x4C07, 0x0800)
-    w(0x2401, 0x0282); l(0x7FFF)
-    w(0x4C07, 0x2800, 0xE082, 0xEE82, 0xD082)
-    w(0x2418, 0xE682, 0x2E18, 0xE687, 0xD487)
-    w(0xD082, 0x4C80)
-    # Tiefpass 1/2: lp = s/2 + lp/2
-    w(0xE280, 0x2406, 0xE282, 0xD082, 0x2C00)
-    # Hochpass 3/256: h = lp - tief ; q = h>>7 ; tief += q ; h -= q ; q >>= 1 ; tief += q ; h -= q
-    w(0x2406, 0x2E0E, 0x9487)
-    w(0x2002, 0xEE80, 0xDE80, 0x9480, 0xE280, 0xDE80, 0x9480, 0x2C47)
-    w(0x2003, 0xE788, 0x2582, 0x0800)                   # Zeile[w] = h (nur L: beide Lesekoepfe lesen nur L)
-    w(0x4AAB, MODEF); a.bcc(NE, 'cout')
-    w(0xD281, 0x4C81, 0xD281, 0x4C81, 0x22C1, 0x22C1)   # VIBDEL: out = 4y (L = R)
-    a.bcc(BRA, 'next')
-    a.label('cout')                                # CHODEL: L = 4*(y0/2 + yL/2), R = 4*(y0/2 + yR/2)
-    w(0x202B, Y0, 0xE280)
-    w(0x222B, YL, 0xE281, 0xD280, 0xD281, 0x4C81, 0xD281, 0x4C81, 0x22C1)
-    w(0x222B, YR, 0xE281, 0xD280, 0xD281, 0x4C81, 0xD281, 0x4C81, 0x22C1)
-    a.label('next')
-    w(0x5283, 0x0283); l(LMASK)
-    w(0x5385); a.bcc(NE, 'loop')
-    w(0x2683, 0x2744, 0x0004, 0x2746, 0x000C, 0x274E, 0x0010)
-    w(0x4CD7, 0x7CFC, 0x4FEF, 0x002C, 0x4E75)
-    # ip: d0 = Position (Q8) -> d0 = linear interpoliert ; veraendert d1, d2, d7
-    a.label('ip')
-    w(0x2400, 0xE082, 0x0282); l(LMASK); w(0xE78A)   # d2 = ((pos >> 8) & MASK) << 3
-    w(0x0280); l(0xFF)                               # d0 = frac
-    w(0x2E32, 0x2800, 0x5082, 0x0282); l(LMASK << 3) # s0 = line[i] ; d2 = (i+1) & MASK
-    w(0x2432, 0x2800, 0xE282)                        # s1 >> 1
-    w(0x2207, 0xE281, 0x9481, 0xE082)                # d = ((s1>>1) - (s0>>1)) >> 8
-    w(0x4C00, 0x2800, 0xD482, 0xD487, 0x2002, 0x4E75)   # d*frac ; *2 ; + s0 ; rts
-    code = a.done(); check_cf(code, M_LOOP); assert len(code) <= SIZE[M_LOOP], len(code)
+    """v2 (25.10.2026, Pips Lastmessung: Digi 77 %, VIBDEL 82 %, CHODEL 87 % Mittel): LFO nur noch einmal je Block (32 Frames)
+    am Blockende berechnet, dazwischen linear (MOD += DMOD je Frame). Spart ~20 Befehle je Frame.
+    Gleiten wie Digital / Original; VIBDEL: y = interp((w - cur - VB) << 8 - mod); CHODEL: sauberer Kopf y0 + zwei
+    modulierte Koepfe (+-mod); Rueckkopplung + Eingang wie Digital, Tiefpass 1/2, Hochpass 3/256; ip = lineare Interpolation."""
+    from cfasm import asm, done as adone
+    a = A(M_LOOP)
+    asm(a, f'''
+    pre:    move.l  {PH_}(a3),d0             ; Phase += 32 * INC
+            move.l  {INC}(a3),d1
+            lsl.l   #5,d1
+            add.l   d1,d0
+            move.l  d0,{PH_}(a3)
+            move.l  d0,d1
+            bpl     tp
+            not.l   d1
+    tp:     subi.l  #0x40000000,d1
+            asr.l   #8,d1
+            asr.l   #7,d1
+            move.l  d1,d2                    ; d2 = t*t >> 15
+            muls.l  d1,d2
+            asr.l   #8,d2
+            asr.l   #7,d2
+            muls.l  d1,d2                    ; d2 = d2*t >> 15   (t^3)
+            asr.l   #8,d2
+            asr.l   #7,d2
+            move.l  d1,d7                    ; d1 = (3t - t^3) >> 1
+            add.l   d1,d1
+            add.l   d7,d1
+            sub.l   d2,d1
+            asr.l   #1,d1
+            move.l  {DEP}(a3),d2             ; d1 = d1*DEP >> 15   (mod am Blockende, Q8)
+            muls.l  d2,d1
+            asr.l   #8,d1
+            asr.l   #7,d1
+            move.l  d1,d0                    ; DMOD = (Ende - MOD) >> 5
+            sub.l   {MOD}(a3),d0
+            asr.l   #5,d0
+            move.l  d0,{DMOD}(a3)
+    loop:   move.l  a4,d0
+            sub.l   d4,d0
+            move.l  d0,d7
+            asr.l   #8,d7
+            asr.l   #5,d7
+            bne     add
+            tst.l   d0
+            beq     nost
+            move.l  d3,d1
+            andi.l  #3,d1
+            bne     nost
+            moveq   #1,d7
+            tst.l   d0
+            bpl     add
+            moveq   #-1,d7
+    add:    add.l   d7,d4
+    nost:   move.l  {MOD}(a3),d1
+            add.l   {DMOD}(a3),d1
+            move.l  d1,{MOD}(a3)
+            tst.l   {MODEF}(a3)
+            bne     cho
+            move.l  d3,d0                    ; d0 = ((w - cur - VB) << 8) - mod
+            sub.l   d4,d0
+            subi.l  #{VB},d0
+            lsl.l   #8,d0
+            sub.l   d1,d0
+            bsr     ip
+            move.l  d0,d1                    ; bsr ip ; move.l d0,d1   (y = Rueckkopplung)
+            bra     fb
+    cho:    move.l  d3,d0                    ; y0 = line[w - cur] -> Y0
+            sub.l   d4,d0
+            andi.l  #{LMASK:#x},d0
+            lsl.l   #3,d0
+            move.l  0(a2,d0.l),d1
+            move.l  d1,{Y0}(a3)
+            move.l  d3,d0                    ; d0 = ((w - cur - CB) << 8) - mod
+            sub.l   d4,d0
+            subi.l  #{CB:#x},d0
+            lsl.l   #8,d0
+            sub.l   {MOD}(a3),d0
+            bsr     ip
+            move.l  d0,{YL}(a3)
+            move.l  d3,d0                    ; d0 = ((w - cur - CB) << 8) + mod
+            sub.l   d4,d0
+            subi.l  #{CB:#x},d0
+            lsl.l   #8,d0
+            add.l   {MOD}(a3),d0
+            bsr     ip
+            move.l  d0,{YR}(a3)
+            move.l  {Y0}(a3),d1
+    fb:     move.l  a5,d7
+            move.l  d1,d0
+            asr.l   #8,d0
+            asr.l   #7,d0
+            muls.l  d7,d0
+            move.l  d1,d2
+            andi.l  #0x7fff,d2
+            muls.l  d7,d2
+            asr.l   #8,d2
+            asr.l   #7,d2
+            add.l   d2,d0
+            move.l  (a0)+,d2
+            asr.l   #3,d2
+            move.l  (a0)+,d7
+            asr.l   #3,d7
+            add.l   d7,d2
+            add.l   d2,d0
+            sats.l  d0
+            asr.l   #1,d0
+            move.l  d6,d2
+            asr.l   #1,d2
+            add.l   d2,d0
+            move.l  d0,d6
+            move.l  d6,d2
+            move.l  a6,d7
+            sub.l   d7,d2
+            move.l  d2,d0
+            asr.l   #7,d0
+            add.l   d0,d7
+            sub.l   d0,d2
+            asr.l   #1,d0
+            add.l   d0,d7
+            sub.l   d0,d2
+            movea.l d7,a6
+            move.l  d3,d0                    ; Zeile[w] = h (nur L: beide Lesekoepfe lesen nur L)
+            lsl.l   #3,d0
+            move.l  d2,0(a2,d0.l)
+            tst.l   {MODEF}(a3)
+            bne     cout
+            add.l   d1,d1                    ; VIBDEL: out = 4y (L = R)
+            sats.l  d1
+            add.l   d1,d1
+            sats.l  d1
+            move.l  d1,(a1)+
+            move.l  d1,(a1)+
+            bra     next
+    cout:   move.l  {Y0}(a3),d0
+            asr.l   #1,d0
+            move.l  {YL}(a3),d1
+            asr.l   #1,d1
+            add.l   d0,d1
+            add.l   d1,d1
+            sats.l  d1
+            add.l   d1,d1
+            sats.l  d1
+            move.l  d1,(a1)+
+            move.l  {YR}(a3),d1
+            asr.l   #1,d1
+            add.l   d0,d1
+            add.l   d1,d1
+            sats.l  d1
+            add.l   d1,d1
+            sats.l  d1
+            move.l  d1,(a1)+
+    next:   addq.l  #1,d3
+            andi.l  #{LMASK:#x},d3
+            subq.l  #1,d5
+            bne     loop
+            move.l  d3,(a3)
+            move.l  d4,4(a3)
+            move.l  d6,12(a3)
+            move.l  a6,16(a3)
+            movem.l (sp),d2-d7/a2-a6
+            lea     44(sp),sp
+            rts
+    ip:     move.l  d0,d2                    ; d2 = ((pos >> 8) & MASK) << 3
+            asr.l   #8,d2
+            andi.l  #{LMASK:#x},d2
+            lsl.l   #3,d2
+            andi.l  #255,d0                  ; d0 = frac
+            move.l  0(a2,d2.l),d7          ; s0 = line[i] ; d2 = (i+1) & MASK
+            addq.l  #8,d2
+            andi.l  #{LMASK << 3:#x},d2
+            move.l  0(a2,d2.l),d2          ; s1 >> 1
+            asr.l   #1,d2
+            move.l  d7,d1                    ; d = ((s1>>1) - (s0>>1)) >> 8
+            asr.l   #1,d1
+            sub.l   d1,d2
+            asr.l   #8,d2
+            muls.l  d0,d2                    ; d*frac ; *2 ; + s0 ; rts
+            add.l   d2,d2
+            add.l   d7,d2
+            move.l  d2,d0
+            rts
+    ''')
+    code = adone(a); check_cf(code, M_LOOP); assert len(code) <= SIZE[M_LOOP], len(code)
     return code
 
 
 def build_setup(loop_at):
-    a = A(M_SETUP); w, l = a.w, a.l32
-    a.label('MS')
-    w(0x4FEF, 0xFFD4, 0x48D7, 0x7CFC)
-    w(0x206F, 0x0038)
-    w(0x7F68, 0x0002, 0xE087, 0x4A87); a.bcc(PL, 'p1'); w(0x7E00)          # Fdbk wie Digital
-    a.label('p1')
-    w(0x0C87); l(127); a.bcc(LE, 'p2'); w(0x7E7F)
-    a.label('p2')
-    w(0x203C); l(258); w(0x4C00, 0x7800)
-    w(0x2007, 0x4C07, 0x0800, 0xE080, 0xEE80)
-    w(0x4C07, 0x0800, 0xE080, 0xEE80)
-    w(0x2207, 0xDE87, 0xDE81, 0x9E80, 0xE287)
-    w(0x2A47)
-    w(0x7150); a.orig(fx.DTIME, 6); w(0x760A); a.orig(fx.DTIME + 10, 6)   # Zeit wie die Firmware (Befehle aus dem Image)
-    a.orig(fx.DTIME + 20, 6); w(0x4EB9); l(dn.MD)
-    a.orig(fx.DTIME + 32, 14)
-    w(0x0C80); l(0x3FC00); a.bcc(LS, 'p3'); w(0x203C); l(0x3FC00)
-    a.label('p3')
-    w(0x0C80); l(32); a.bcc(CC, 'p4'); w(0x7020)
-    a.label('p4')
-    w(0x2840)
-    w(0x47F9); l(MSTATE)
-    w(0x202B, 0x0008, 0x0C80); l(MMAGIC); a.bcc(EQ, 'ok')
-    w(0x203C); l(MMAGIC); w(0x2740, 0x0008)
-    w(0x7000, 0x2680, 0x2740, 0x000C, 0x2740, 0x0010, 0x2740, PH_, 0x2740, MOD)   # w = lp = tief = Phase = LFO = 0
-    w(0x200C, 0x2740, 0x0004)                                            # cur = Ziel
-    a.label('ok')
-    w(0x7000, 0x1039); l(DMODE)                    # moveq #0,d0 ; move.b DMODE,d0
-    w(0x7200, 0x1239); l(SPEED)                    # moveq #0,d1 ; move.b SPEED,d1
-    w(0x0C81); l(127); a.bcc(LS, 'sok'); w(0x727F)
-    a.label('sok')
-    w(0x2401, 0x4C01, 0x2800)                      # d2 = S*S
-    w(0x0C80); l(B_CHO); a.bcc(EQ, 'cho')
-    w(0x7600 | SPD_V[0], 0x4C03, 0x2800, 0x0682); l(SPD_V[1])
-    w(0x2742, INC, 0x243C); l(DEP_V); w(0x2742, DEP, 0x42AB, MODEF)
-    a.bcc(BRA, 'go')
-    a.label('cho')
-    w(0x7600 | SPD_C[0], 0x4C03, 0x2800, 0x0682); l(SPD_C[1])
-    w(0x2742, INC, 0x243C); l(DEP_C); w(0x2742, DEP, 0x7001, 0x2740, MODEF)
-    a.label('go')
-    w(0x2613, 0x282B, 0x0004, 0x2C2B, 0x000C, 0x2C6B, 0x0010)
-    w(0x7A20, 0x226F, 0x0030, 0x206F, 0x0034)
-    w(0x45F9); l(LINE); w(0x4EF9); l(loop_at)
-    code = a.done(); check_cf(code, M_SETUP); assert len(code) <= SIZE[M_SETUP], len(code)
+    a = A(M_SETUP)
+    from cfasm import asm, done as adone
+    asm(a, f'''
+    MS:     lea     -44(sp),sp
+            movem.l d2-d7/a2-a6,(sp)
+            movea.l 56(sp),a0
+            mvs.w   2(a0),d7                 ; Fdbk wie Digital
+            asr.l   #8,d7
+            tst.l   d7
+            bpl     p1
+            moveq   #0,d7
+    p1:     cmpi.l  #127,d7
+            ble     p2
+            moveq   #127,d7
+    p2:     move.l  #258,d0
+            muls.l  d0,d7
+            move.l  d7,d0
+            muls.l  d7,d0
+            asr.l   #8,d0
+            asr.l   #7,d0
+            muls.l  d7,d0
+            asr.l   #8,d0
+            asr.l   #7,d0
+            move.l  d7,d1
+            add.l   d7,d7
+            add.l   d1,d7
+            sub.l   d0,d7
+            asr.l   #1,d7
+            movea.l d7,a5
+            mvs.w   (a0),d0                  ; Zeit wie die Firmware (Befehle aus dem Image)
+            orig    {fx.DTIME:#x},6
+            moveq   #10,d3
+            orig    {fx.DTIME + 10:#x},6
+            orig    {fx.DTIME + 20:#x},6
+            jsr     {dn.MD:#x}
+            orig    {fx.DTIME + 32:#x},14
+            cmpi.l  #0x3fc00,d0
+            bls     p3
+            move.l  #0x3fc00,d0
+    p3:     cmpi.l  #32,d0
+            bcc     p4
+            moveq   #32,d0
+    p4:     movea.l d0,a4
+            lea     {MSTATE:#x},a3
+            move.l  8(a3),d0
+            cmpi.l  #{MMAGIC:#x},d0
+            beq     ok
+            move.l  #{MMAGIC:#x},d0
+            move.l  d0,8(a3)
+            moveq   #0,d0                    ; w = lp = tief = Phase = LFO = 0
+            move.l  d0,(a3)
+            move.l  d0,12(a3)
+            move.l  d0,16(a3)
+            move.l  d0,{PH_}(a3)
+            move.l  d0,{MOD}(a3)
+            move.l  a4,d0                    ; cur = Ziel
+            move.l  d0,4(a3)
+    ok:     moveq   #0,d0
+            move.b  {DMODE:#x},d0
+            moveq   #0,d1
+            move.b  {SPEED:#x},d1
+            cmpi.l  #127,d1
+            bls     sok
+            moveq   #127,d1
+    sok:    move.l  d1,d2                    ; d2 = S*S
+            muls.l  d1,d2
+            cmpi.l  #{B_CHO},d0
+            beq     cho
+            moveq   #{SPD_V[0]},d3
+            muls.l  d3,d2
+            addi.l  #{SPD_V[1]:#x},d2
+            move.l  d2,{INC}(a3)
+            move.l  #{DEP_V:#x},d2
+            move.l  d2,{DEP}(a3)
+            clr.l   {MODEF}(a3)
+            bra     go
+    cho:    moveq   #{SPD_C[0]},d3
+            muls.l  d3,d2
+            addi.l  #{SPD_C[1]:#x},d2
+            move.l  d2,{INC}(a3)
+            move.l  #{DEP_C:#x},d2
+            move.l  d2,{DEP}(a3)
+            moveq   #1,d0
+            move.l  d0,{MODEF}(a3)
+    go:     move.l  (a3),d3
+            move.l  4(a3),d4
+            move.l  12(a3),d6
+            movea.l 16(a3),a6
+            moveq   #32,d5
+            movea.l 48(sp),a1
+            movea.l 52(sp),a0
+            lea     {LINE:#x},a2
+            jmp     {loop_at:#x}
+    ''')
+    code = adone(a); check_cf(code, M_SETUP); assert len(code) <= SIZE[M_SETUP], len(code)
     return code, a.lab['MS']
 
 

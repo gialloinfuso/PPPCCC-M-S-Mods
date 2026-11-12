@@ -8,6 +8,7 @@ Benutzte OS-Funktionen: 0x4001263c(kit,track)=Mute lesen, 0x4001381c(kit,track,w
 0x4007faf4(code)=Taste gehalten.
 """
 import json, struct, sys, pathlib, hashlib
+sys.path.insert(1, str(pathlib.Path(__file__).resolve().parents[1] / 'v2'))   # cfasm (lesbarer Assembler, 2.3)
 BASE = 0x40000400
 MASK = 0x40167c50            # freigegebenes 35x35-Sprite-Maske (280 B), constante 0x400b211e
 GETM, SETM, KEYH, TOGGLE = 0x4001263c, 0x4001381c, 0x4007faf4, 0x40013904
@@ -68,64 +69,94 @@ class A:
 BRA, BNE, BEQ, BLT = 0x0, 0x6, 0x7, 0xD
 
 def build():
+    """Solo in der Mute-Ansicht (statt jsr TOGGLE bei 0x40023550; Stapel: kit, track, 1)"""
+    from cfasm import asm, done as adone
     a = A(ENTRY)
-    # -- Solo nur im eingerasteten Mute-Modus und bei gehaltener FUNC-Taste
-    a.w(0x4A39); a.l32(LATCH)                       # tst.b LATCH
-    a.bcc(BEQ, 'orig')
-    a.w(0x4878, 0x0001); a.w(0x4EB9); a.l32(KEYH)    # pea 1 ; jsr KEYH
-    a.w(0x588F)                                      # addq.l #4,a7
-    a.w(0x4A80)                                      # tst.l d0
-    a.bcc(BEQ, 'orig')
-    # -- Solo
-    a.w(0x4FEF, 0xFFF0); a.w(0x48D7, 0x041C)         # lea -16(a7),a7 ; movem.l d2-d4/a2,(a7)
-    a.w(0x246F, 0x0014)                              # movea.l 20(a7),a2   (kit)
-    a.w(0x242F, 0x0018)                              # move.l  24(a7),d2   (track)
-    a.w(0x2052, 0x2F0A, 0x2068, 0x0028, 0x4E90, 0x588F, 0x4A80)  # movea.l (a2),a0; push a2; movea.l 40(a0),a0; jsr (a0); addq; tst
-    a.bcc(BEQ, 'done')                               # Kit nicht bereit
-    a.w(0x7005, 0xB082)                              # moveq #5,d0 ; cmp.l d2,d0
-    a.w(0x6500); a.fix.append((len(a.b), 'done')); a.w(0)   # bcs done (Track > 5)
-    a.w(0x7000, 0x1039); a.l32(SOLOF)                # moveq #0,d0 ; move.b SOLOF,d0
-    a.w(0x2202, 0x5281, 0xB280)                      # move.l d2,d1 ; addq.l #1,d1 ; cmp.l d0,d1
-    a.bcc(BEQ, 'restore')
-    a.w(0x4A80)                                      # tst.l d0
-    a.bcc(BNE, 'setall')                             # schon Solo auf anderem Track: Sicherung behalten
-    a.w(0x7600)                                      # moveq #0,d3
-    a.label('save')
-    a.w(0x2F03, 0x2F0A, 0x4EB9); a.l32(GETM)         # push d3; push a2; jsr GETM
-    a.w(0x508F, 0x7180)                              # addq.l #8,a7 ; mvz.b d0,d0
-    a.w(0x41F9); a.l32(SAVED)                        # lea SAVED,a0
-    a.w(0x1180, 0x3800)                              # move.b d0,(0,a0,d3.l)
-    a.w(0x5283, 0x7006, 0xB680)                      # addq.l #1,d3 ; moveq #6,d0 ; cmp.l d0,d3
-    a.bcc(BLT, 'save')
-    a.label('setall')
-    a.w(0x7600)                                      # moveq #0,d3
-    a.label('setl')
-    a.w(0x7801, 0xB682)                              # moveq #1,d4 ; cmp.l d2,d3
-    a.bcc(BNE, 'sv')
-    a.w(0x7800)                                      # moveq #0,d4  (gewählter Track bleibt hörbar)
-    a.label('sv')
-    a.w(0x4878, 0x0001, 0x2F04, 0x2F03, 0x2F0A, 0x4EB9); a.l32(SETM)
-    a.w(0x4FEF, 0x0010)                              # lea 16(a7),a7
-    a.w(0x5283, 0x7006, 0xB680)
-    a.bcc(BLT, 'setl')
-    a.w(0x2002, 0x5280, 0x13C0); a.l32(SOLOF)        # d0=track+1 ; move.b d0,SOLOF
-    a.bcc(BRA, 'done')
-    a.label('restore')
-    a.w(0x7600)                                      # moveq #0,d3
-    a.label('rl')
-    a.w(0x41F9); a.l32(SAVED)                        # lea SAVED,a0
-    a.w(0x7800, 0x1830, 0x3800)                      # moveq #0,d4 ; move.b (0,a0,d3.l),d4
-    a.w(0x4878, 0x0001, 0x2F04, 0x2F03, 0x2F0A, 0x4EB9); a.l32(SETM)
-    a.w(0x4FEF, 0x0010)
-    a.w(0x5283, 0x7006, 0xB680)
-    a.bcc(BLT, 'rl')
-    a.w(0x4239); a.l32(SOLOF)                        # clr.b SOLOF
-    a.label('done')
-    a.w(0x4CD7, 0x041C, 0x4FEF, 0x0010, 0x4E75)      # movem.l (a7),d2-d4/a2 ; lea 16(a7),a7 ; rts
-    a.label('orig')
-    a.w(0x4239); a.l32(SOLOF)                        # normaler Mute-Druck beendet ein Solo
-    a.w(0x4EF9); a.l32(TOGGLE)                       # jmp TOGGLE (Argumente liegen noch auf dem Stack)
-    return a.done(), a.lab
+    asm(a, f'''
+    ; Solo nur im eingerasteten Mute-Modus und bei gehaltener FUNC-Taste
+            tst.b   {LATCH:#x}
+            beq     orig
+            pea     1.w
+            jsr     {KEYH:#x}                ; FUNC gehalten?
+            addq.l  #4,sp
+            tst.l   d0
+            beq     orig
+    ; Solo
+            lea     -16(sp),sp
+            movem.l d2-d4/a2,(sp)
+            movea.l 20(sp),a2                ; Kit
+            move.l  24(sp),d2                ; Track
+            movea.l (a2),a0
+            move.l  a2,-(sp)
+            movea.l 40(a0),a0
+            jsr     (a0)
+            addq.l  #4,sp
+            tst.l   d0
+            beq     done                     ; Kit nicht bereit
+            moveq   #5,d0
+            cmp.l   d2,d0
+            bcs     done                     ; Track > 5
+            moveq   #0,d0
+            move.b  {SOLOF:#x},d0
+            move.l  d2,d1
+            addq.l  #1,d1
+            cmp.l   d0,d1
+            beq     restore                  ; derselbe Track nochmal: Solo aus
+            tst.l   d0
+            bne     setall                   ; schon Solo auf anderem Track: Sicherung behalten
+            moveq   #0,d3
+    save:   move.l  d3,-(sp)                 ; Mute-Zustand aller Tracks sichern
+            move.l  a2,-(sp)
+            jsr     {GETM:#x}
+            addq.l  #8,sp
+            mvz.b   d0,d0
+            lea     {SAVED:#x},a0
+            move.b  d0,0(a0,d3.l)
+            addq.l  #1,d3
+            moveq   #6,d0
+            cmp.l   d0,d3
+            blt     save
+    setall: moveq   #0,d3
+    setl:   moveq   #1,d4                    ; alle muten ...
+            cmp.l   d2,d3
+            bne     sv
+            moveq   #0,d4                    ; ... ausser dem gewaehlten Track
+    sv:     pea     1.w
+            move.l  d4,-(sp)
+            move.l  d3,-(sp)
+            move.l  a2,-(sp)
+            jsr     {SETM:#x}
+            lea     16(sp),sp
+            addq.l  #1,d3
+            moveq   #6,d0
+            cmp.l   d0,d3
+            blt     setl
+            move.l  d2,d0
+            addq.l  #1,d0
+            move.b  d0,{SOLOF:#x}            ; Solo = Track + 1
+            bra     done
+    restore: moveq  #0,d3                    ; gesicherten Mute-Zustand zurueck
+    rl:     lea     {SAVED:#x},a0
+            moveq   #0,d4
+            move.b  0(a0,d3.l),d4
+            pea     1.w
+            move.l  d4,-(sp)
+            move.l  d3,-(sp)
+            move.l  a2,-(sp)
+            jsr     {SETM:#x}
+            lea     16(sp),sp
+            addq.l  #1,d3
+            moveq   #6,d0
+            cmp.l   d0,d3
+            blt     rl
+            clr.b   {SOLOF:#x}
+    done:   movem.l (sp),d2-d4/a2
+            lea     16(sp),sp
+            rts
+    orig:   clr.b   {SOLOF:#x}               ; normaler Mute-Druck beendet ein Solo
+            jmp     {TOGGLE:#x}              ; Argumente liegen noch auf dem Stapel
+    ''')
+    return adone(a), a.lab
 
 def tweak(stock):
     code, lab = build()

@@ -203,49 +203,101 @@ def coef_table():
     return t
 
 def build_pp():
-    a = A(M_PP); w, l = a.w, a.l32
-    # a0 in, a1 out (eigener Kanal), a4 Ende in, d7 a (Q15), a2 fb (Q15), d2..d6 = s0..s4 ; frei: d0, d1, a5, a6
-    a.label('P')
-    w(0x2006, 0xE080, 0xEE80, 0x220A, 0x4C01, 0x0800)   # fbk = (s4>>15)*fb
-    w(0x2218, 0xE881, 0x2C41, 0x2218, 0xE881, 0xDDC1)   # x = L/16 + R/16 -> a6 (Reserve fuer Resonanz)
-    w(0xD08E)                               # add.l a6,d0   u
-    for sb, sa in ((2, 3), (3, 4), (4, 5), (5, 6)):
-        w(0x2A40)                           # movea.l d0,a5        Eingang merken
-        w(0x2200, 0x9280 | sa)              # move.l d0,d1 ; sub.l sA,d1   v
-        w(0x2001, 0xE080, 0xEE80, 0x4C07, 0x0800)   # (v>>15)*a
-        w(0x0281); l(0x7FFF)                # andi.l #$7fff,d1
-        w(0x4C07, 0x1800, 0xE081, 0xEE81, 0xD081)   # ((v&$7fff)*a)>>15 ; add
-        w(0xD080 | sb)                      # add.l sB,d0         y
-        w(0x200D | (sb << 9))               # move.l a5,sB        sB = Eingang
-    w(0x2C00)                               # move.l d0,d6   s4 = y3
-    w(0x220E, 0xD280, 0xD281, 0x4C81, 0xD281, 0x4C81)   # out = (x + y3) * 4
-    w(0x2281, 0x5089)                       # move.l d1,(a1) ; addq.l #8,a1
-    w(0xB1CC); a.bcc(NE, 'P')               # cmpa.l a4,a0 ; bne P
-    w(0x4E75)
-    code = a.done(); check_cf(code, M_PP); assert len(code) <= 272, len(code)
+    from cfasm import asm, done as adone
+    # vier Allpass-Stufen: Zustand s(sb), Ausgang der vorigen Stufe s(sa)
+    stages = ''.join(f'''
+            movea.l d0,a5                    ; Eingang merken
+            move.l  d0,d1
+            sub.l   d{sa},d1                 ; v
+            move.l  d1,d0
+            asr.l   #8,d0
+            asr.l   #7,d0
+            muls.l  d7,d0                    ; (v>>15)*a
+            andi.l  #0x7fff,d1
+            muls.l  d7,d1
+            asr.l   #8,d1
+            asr.l   #7,d1
+            add.l   d1,d0                    ; + ((v&0x7fff)*a)>>15
+            add.l   d{sb},d0                 ; y
+            move.l  a5,d{sb}                 ; sB = Eingang''' for sb, sa in ((2, 3), (3, 4), (4, 5), (5, 6)))
+    a = A(M_PP)
+    asm(a, f'''
+    ; a0 in, a1 out (eigener Kanal), a4 Ende in, d7 a (Q15), a2 fb (Q15), d2..d6 = s0..s4 ; frei: d0, d1, a5, a6
+    P:      move.l  d6,d0
+            asr.l   #8,d0
+            asr.l   #7,d0
+            move.l  a2,d1
+            muls.l  d1,d0                    ; fbk = (s4>>15)*fb
+            move.l  (a0)+,d1
+            asr.l   #4,d1
+            movea.l d1,a6
+            move.l  (a0)+,d1
+            asr.l   #4,d1
+            adda.l  d1,a6                    ; x = L/16 + R/16 -> a6
+            add.l   a6,d0                    ; u{stages}
+            move.l  d0,d6                    ; s4 = y3
+            move.l  a6,d1
+            add.l   d0,d1
+            add.l   d1,d1
+            sats.l  d1
+            add.l   d1,d1
+            sats.l  d1                       ; out = (x + y3) * 4
+            move.l  d1,(a1)
+            addq.l  #8,a1
+            cmpa.l  a4,a0
+            bne     P
+            rts
+    ''')
+    code = adone(a); check_cf(code, M_PP); assert len(code) <= 272, len(code)
     return code, a.lab['P']
 
 def build_coef():
-    a = A(M_PT); w, l = a.w, a.l32
-    a.label('coef')                         # d0 Phase -> d7 Koeffizient (Q15); veraendert d1-d3, a0
-    w(0x2200); a.bcc(PL, 'cp'); w(0x4681)
-    a.label('cp')
-    w(0x0481); l(0x40000000); w(0xE081, 0xEE81)   # Dreieck +-32768
-    w(0x2401, 0x4C02, 0x2800, 0xE082, 0xEE82, 0x4C01, 0x2800, 0xE082, 0xEE82)   # t^3
-    w(0x2601, 0xD281, 0xD283, 0x9282, 0xE281)   # (3t - t^3)/2
-    w(0x0681); l(32768)
-    w(0x0C81); l(65535); a.bcc(LE, 'c1'); w(0x223C); l(65535)
-    a.label('c1')
-    w(0x2401, 0x760B, 0xE6AA, 0x0281); l(0x7FF)   # idx = p>>11 ; frac = p & $7ff
-    w(0x41F9); l(0); fx = len(a.b) - 4; w(0xD482)         # lea TAB,a0 ; add.l d2,d2
-    w(0x7770, 0x2800, 0x7F70, 0x2802)       # mvs.w 0(a0,d2.l),d3 ; mvs.w 2(a0,d2.l),d7
-    w(0x9E83, 0x4C01, 0x7800, 0xE087, 0xE687, 0xDE83)   # d7 = t0 + ((t1-t0)*frac >> 11)
-    w(0x4E75)
-    code = bytearray(a.done()); check_cf(bytes(code), M_PT)
-    while len(code) % 2: code += b'\0'
-    tab_at = M_PT + len(code); code += struct.pack('>33h', *coef_table())
-    code[fx:fx + 4] = struct.pack('>I', tab_at); assert len(code) <= 272, len(code)
-    return bytes(code), a.lab['coef']
+    from common import asm2
+    text = f'''
+    ; coef: d0 Phase -> d7 Koeffizient (Q15); veraendert d1-d3, a0
+    coef:   move.l  d0,d1
+            bpl     cp
+            not.l   d1
+    cp:     subi.l  #0x40000000,d1
+            asr.l   #8,d1
+            asr.l   #7,d1                    ; Dreieck +-32768
+            move.l  d1,d2
+            muls.l  d2,d2
+            asr.l   #8,d2
+            asr.l   #7,d2
+            muls.l  d1,d2
+            asr.l   #8,d2
+            asr.l   #7,d2                    ; t^3
+            move.l  d1,d3
+            add.l   d1,d1
+            add.l   d3,d1
+            sub.l   d2,d1
+            asr.l   #1,d1                    ; (3t - t^3)/2
+            addi.l  #32768,d1
+            cmpi.l  #65535,d1
+            ble     c1
+            move.l  #65535,d1
+    c1:     move.l  d1,d2
+            moveq   #11,d3
+            lsr.l   d3,d2                    ; idx = p>>11
+            andi.l  #0x7ff,d1                ; frac = p & 0x7ff
+            lea     TAB,a0
+            add.l   d2,d2
+            mvs.w   0(a0,d2.l),d3
+            mvs.w   2(a0,d2.l),d7
+            sub.l   d3,d7
+            muls.l  d1,d7
+            asr.l   #8,d7
+            asr.l   #3,d7
+            add.l   d3,d7                    ; d7 = t0 + ((t1-t0)*frac >> 11)
+            rts
+'''
+    def tail(end):
+        pad = end % 2
+        return bytes(pad) + struct.pack('>33h', *coef_table()), {'TAB': end + pad}
+    code, lab = asm2(M_PT, text, tail)
+    assert len(code) <= 272, len(code)
+    return code, lab['coef']
 
 def build_ps(pass_at, coef_at):
     a = A(M_PS); w, l = a.w, a.l32

@@ -45,7 +45,7 @@ M_T4 = 0x4016F8C8                             # 34x34, 272 B: zwei weitere Tabel
 SIZE = {M_G: 280, M_GD: 280, M_T: 280, M_T2: 280, M_T3: 280, M_K: 376, M_T4: 272}
 GMAX = 7
 NAMES = ovl.GROOVE_NAMES                       # Anzeige im Popup (gen_overlay_113.build_np)
-# Groove 1..7 (0 = Swing der Firmware): Tabellen aus grooves/grooves.json.
+# Groove 1..7 (0 = Swing der Firmware): Tabellen aus grooves/grooves.json (groovetab.py).
 GROOVES = ['Boom Bap', 'Disco', 'Reggae', 'Bongo', 'Caixixi', 'Highlife', 'Kuduro']
 HDR = 0x77B2                                   # Pattern-Kopf in B
 HOFF = 40                                      # Humanize Zeit Track t: Kopf + 40 + t
@@ -63,11 +63,8 @@ NE, EQ, LE, GE, HI, LS, PL, MI, CS, BRA, BSR, GT = 0x6, 0x7, 0xF, 0xC, 0x2, 0x3,
 
 
 def table(name):
-    """Groove-Tabelle aus grooves/grooves.json (Eintrag mit dem Index von name)."""
-    d = json.load(open(pathlib.Path(__file__).resolve().parents[1] / 'grooves' / 'grooves.json'))
-    i = GROOVES.index(name) + 1
-    g = next(x for x in d['grooves'] if x['index'] == i)
-    g = dict(g, off=g['offset_256th_step'], vel=g['velocity'])
+    import groovetab
+    g = groovetab.parse(name)
     return struct.pack('64b', *g['off']) + bytes(g['vel']), g
 
 

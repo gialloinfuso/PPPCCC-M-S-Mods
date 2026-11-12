@@ -39,47 +39,128 @@ NE, EQ, PL = 0x6, 0x7, 0xA
 
 def build_dl():
     """fx.build_dl mit dem Charakter-Filter (CHAR). Register wie dort: d0 s, d6 Tiefpass, a6 Hochpass-Tiefanteil."""
-    a = A(M_DL); w, l = a.w, a.l32
-    a.label('loop')
-    w(0x200C, 0x9084, 0x2E00, 0xE087, 0xEA87); a.bcc(NE, 'add')
-    w(0x4A80); a.bcc(EQ, 'nost')
-    w(0x2203, 0x0281); l(3); a.bcc(NE, 'nost')
-    w(0x7E01, 0x4A80); a.bcc(PL, 'add'); w(0x7EFF)
-    a.label('add'); w(0xD887)
-    a.label('nost')
-    w(0x2003, 0x9084, 0x0280); l(fx.LMASK)
-    w(0xE788, 0x2232, 0x0800)
-    w(0x2E0D)
-    w(0x2001, 0xE080, 0xEE80, 0x4C07, 0x0800)
-    w(0x2401, 0x0282); l(0x7FFF)
-    w(0x4C07, 0x2800, 0xE082, 0xEE82, 0xD082)
-    w(0x2418, 0xE682, 0x2E18, 0xE687, 0xD487)
-    w(0xD082, 0x4C80)                       # s = sats(x + g*y)
+    from cfasm import asm, done as adone
     if CHAR:
-        # Tiefpass a = 13/16: lp = (s - 3s/16) + 3lp/16, sats
-        w(0x2400, 0xE682, 0x2E02, 0xE287, 0xD487)   # d2 = s>>3 ; d7 = d2>>1 ; d2 += d7   (3s/16)
-        w(0x9082)                                   # sub.l d2,d0                        (13s/16)
-        w(0x2406, 0xE682, 0x2E02, 0xE287, 0xD487)   # d2 = 3lp/16
-        w(0xD082, 0x4C80, 0x2C00)                   # add.l d2,d0 ; sats.l d0 ; move.l d0,d6
-        # Hochpass a = 1/32 (~240 Hz): h = lp - tief ; q = h>>5 ; tief += q ; h -= q
-        w(0x2406, 0x2E0E, 0x9487)
-        w(0x2002, 0xEA80, 0xDE80, 0x2C47, 0x9480)
+        filt = '''
+    ; Tiefpass a = 13/16: lp = (s - 3s/16) + 3lp/16, sats
+            move.l  d0,d2
+            asr.l   #3,d2
+            move.l  d2,d7
+            asr.l   #1,d7
+            add.l   d7,d2                    ; 3s/16
+            sub.l   d2,d0                    ; 13s/16
+            move.l  d6,d2
+            asr.l   #3,d2
+            move.l  d2,d7
+            asr.l   #1,d7
+            add.l   d7,d2                    ; 3lp/16
+            add.l   d2,d0
+            sats.l  d0
+            move.l  d0,d6
+    ; Hochpass a = 1/32 (~240 Hz): h = lp - tief ; q = h>>5 ; tief += q ; h -= q
+            move.l  d6,d2
+            move.l  a6,d7
+            sub.l   d7,d2
+            move.l  d2,d0
+            asr.l   #5,d0
+            add.l   d0,d7
+            movea.l d7,a6
+            sub.l   d0,d2'''
     else:
-        w(0x2400, 0xE282, 0x2E06, 0xE287, 0x9487)
-        w(0x2E02, 0xE487, 0xD487, 0xDC82)
-        w(0x2406, 0x2E0E, 0x9487)
-        w(0x2002, 0xEC80, 0xDE80, 0x2C47, 0x9480)
-    w(0x2003, 0xE788, 0x2582, 0x0800, 0x2582, 0x0804)
+        filt = '''
+            move.l  d0,d2
+            asr.l   #1,d2
+            move.l  d6,d7
+            asr.l   #1,d7
+            sub.l   d7,d2
+            move.l  d2,d7
+            asr.l   #2,d7
+            add.l   d7,d2
+            add.l   d2,d6
+            move.l  d6,d2
+            move.l  a6,d7
+            sub.l   d7,d2
+            move.l  d2,d0
+            asr.l   #6,d0
+            add.l   d0,d7
+            movea.l d7,a6
+            sub.l   d0,d2'''
     if LOUD:                                # x6 (+3.5 dB gegenueber x4, Pips Wunsch 25.10.2026): o1 = 2y, o2 = 4y, out = o2 + o1
-        w(0xD281, 0x4C81, 0x2001, 0xD281, 0x4C81, 0xD280, 0x4C81)
+        gain = '''
+            add.l   d1,d1
+            sats.l  d1
+            move.l  d1,d0
+            add.l   d1,d1
+            sats.l  d1
+            add.l   d0,d1
+            sats.l  d1'''
     else:
-        w(0xD281, 0x4C81, 0xD281, 0x4C81)
-    w(0x22C1, 0x22C1)
-    w(0x5283, 0x0283); l(fx.LMASK)
-    w(0x5385); a.bcc(NE, 'loop')
-    w(0x2683, 0x2744, 0x0004, 0x2746, 0x000C, 0x274E, 0x0010)
-    w(0x4CD7, 0x7CFC, 0x4FEF, 0x002C, 0x4E75)
-    code = a.done(); check_cf(code, M_DL); assert len(code) <= SIZE[M_DL], len(code)
+        gain = '''
+            add.l   d1,d1
+            sats.l  d1
+            add.l   d1,d1
+            sats.l  d1'''
+    a = A(M_DL)
+    asm(a, f'''
+    ; Lesekopf gleitet zur Ziel-Verzoegerung (a4), d4 = aktuelle Verzoegerung
+    loop:   move.l  a4,d0
+            sub.l   d4,d0
+            move.l  d0,d7
+            asr.l   #8,d7
+            asr.l   #5,d7
+            bne     add
+            tst.l   d0
+            beq     nost
+            move.l  d3,d1
+            andi.l  #3,d1
+            bne     nost
+            moveq   #1,d7
+            tst.l   d0
+            bpl     add
+            moveq   #-1,d7
+    add:    add.l   d7,d4
+    nost:   move.l  d3,d0
+            sub.l   d4,d0
+            andi.l  #{fx.LMASK:#x},d0
+            lsl.l   #3,d0
+            move.l  0(a2,d0.l),d1            ; y = Leitung
+            move.l  a5,d7
+            move.l  d1,d0
+            asr.l   #8,d0
+            asr.l   #7,d0
+            muls.l  d7,d0
+            move.l  d1,d2
+            andi.l  #0x7fff,d2
+            muls.l  d7,d2
+            asr.l   #8,d2
+            asr.l   #7,d2
+            add.l   d2,d0                    ; g*y
+            move.l  (a0)+,d2
+            asr.l   #3,d2
+            move.l  (a0)+,d7
+            asr.l   #3,d7
+            add.l   d7,d2                    ; x = (L + R)/8
+            add.l   d2,d0
+            sats.l  d0                       ; s = sats(x + g*y){filt}
+            move.l  d3,d0
+            lsl.l   #3,d0
+            move.l  d2,0(a2,d0.l)            ; in die Leitung
+            move.l  d2,4(a2,d0.l){gain}
+            move.l  d1,(a1)+
+            move.l  d1,(a1)+
+            addq.l  #1,d3
+            andi.l  #{fx.LMASK:#x},d3
+            subq.l  #1,d5
+            bne     loop
+            move.l  d3,(a3)
+            move.l  d4,4(a3)
+            move.l  d6,12(a3)
+            move.l  a6,16(a3)
+            movem.l (sp),d2-d7/a2-a6
+            lea     44(sp),sp
+            rts
+    ''')
+    code = adone(a); check_cf(code, M_DL); assert len(code) <= SIZE[M_DL], len(code)
     return code
 
 

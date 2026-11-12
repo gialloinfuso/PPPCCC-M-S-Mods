@@ -67,16 +67,20 @@ def data_blob(img):
 
 def F0_code(base):
     """Anzeige 'plain 0..127': formatter(ctx 4(a7), wert 8(a7), puffer 12(a7)) -> sprintf(puffer, "%d", wert>>8)"""
+    from cfasm import asm, done as adone
     a = A(base)
-    a.w(0x202F, 0x0008)                     # move.l 8(a7),d0     Wert (8.8)
-    a.w(0xE080)                             # asr.l #8,d0
-    a.w(0x222F, 0x000C)                     # move.l 12(a7),d1    Puffer
-    a.w(0x2F41, 0x0004)                     # move.l d1,4(a7)
-    a.w(0x2F40, 0x000C)                     # move.l d0,12(a7)    Zahl
-    a.w(0x203C); a.l32(FMT_D)               # move.l #"%d",d0
-    a.w(0x2F40, 0x0008)                     # move.l d0,8(a7)
-    a.w(0x4EF9); a.l32(SPRINTF)             # jmp sprintf
-    c = a.done(); check_cf(c, base); return c
+    asm(a, f'''
+            move.l  8(sp),d0                 ; Wert (8.8)
+            asr.l   #8,d0
+            move.l  12(sp),d1                ; Puffer
+            move.l  d1,4(sp)
+            move.l  d0,12(sp)                ; Zahl
+            move.l  #{FMT_D:#x},d0           ; "%d"
+            move.l  d0,8(sp)
+            jmp     {SPRINTF:#x}
+    ''')
+    c = adone(a); check_cf(c, base); return c
+
 
 def check_cf(code, base):
     """ColdFire kennt nur Befehle bis 6 Byte; Unicorn und Capstone akzeptieren mehr -> hier pruefen."""

@@ -56,7 +56,7 @@ call(0x400E7D50)                               # Schriften wie beim Start
 
 chk('Haken 0x40076c88 = jsr OVT', img[0x40076C88 - BASE:0x40076C88 - BASE + 6] == C.jsr(OVT))
 uc.mem_write(C.VARS, b'\xAA' * 64); w32(C.TIMER, 1000)
-call(OVS, regs={mk.UC_M68K_REG_D0: 1, mk.UC_M68K_REG_D1: 64, mk.UC_M68K_REG_A0: find('Strum'), mk.UC_M68K_REG_A1: 0})
+call(OVS, regs={mk.UC_M68K_REG_D0: 1, mk.UC_M68K_REG_D1: 64, mk.UC_M68K_REG_A0: find('Groove'), mk.UC_M68K_REG_A1: 0})
 uc.mem_write(VC + 0x20, b'\0')
 chk('OVS vor dem ersten Zeichnen (kein Magic): VC unbekannt, nichts angefasst', dirty() == 0)
 good = render()
@@ -65,9 +65,9 @@ chk('erstes Zeichnen: View gezeichnet, Magic gesetzt, kein Popup, PEND/MPEND gel
     and r32(C.VARS + C.V_PEND) == 0 and r32(C.VARS + C.V_MPEND) == 0 and good)
 calls.clear(); good = call(RENDER, [VC, BMP])
 chk('nicht markiert: Zeichenlauf tut nichts (wie Original)', calls == [] and good)
-CASES = [('VIBDEL', 'Speed', 64, False), ('CHODEL', 'Speed', 0, False), ('Delay', 'Speed', 127, False), ('Strum', None, -80, False),
-         ('Strum', None, 80, False), ('Strum', None, 0, False), ('Groove', None, 'Swing', True), ('Groove', None, 'Boom Bap', True),
-         ('Groove', None, 'Highlife', True), ('Groove', None, 'Kuduro', True), ('Groove', None, 'Caixixi', True),
+CASES = [('ViDel', 'Speed', 64, False), ('ChDel', 'Speed', 0, False), ('Delay', 'Speed', 127, False), ('Groove', None, -80, False),
+         ('Groove', None, 80, False), ('Groove', None, 0, False), ('Groove', None, 'Swing', True), ('Groove', None, 'Boom Bap', True),
+         ('Groove', None, 'Dancehall 2', True), ('Groove', None, 'Jazz Rock', True), ('Groove', None, 'Soca', True),
          ('Hum Time', 'Track', 37, False), ('Hum Time', 'All', 100, False), ('Hum Vel', 'Track', 12, False), ('Hum Vel', 'All', 0, False)]
 last = None
 for n1, n2, val, text in CASES:
@@ -81,13 +81,13 @@ for n1, n2, val, text in CASES:
 w32(C.TIMER, r32(C.VARS + C.V_DL) - 10); render(force=False); chk('kurz vor 1.5 s: noch sichtbar', screen() == last and dirty() == 1)
 w32(C.TIMER, r32(C.VARS + C.V_DL) + 5); render(force=False)
 chk('nach 1.5 s: Bild ohne Popup, Art geloescht, Markierung weg', screen() == VIEWPIX and r32(C.VARS + C.V_KIND) == 0 and dirty() == 0)
-w32(C.TIMER, 0xFFFFFF00); call(OVS, regs={mk.UC_M68K_REG_D0: 1, mk.UC_M68K_REG_D1: 5, mk.UC_M68K_REG_A0: find('Strum'), mk.UC_M68K_REG_A1: 0})
+w32(C.TIMER, 0xFFFFFF00); call(OVS, regs={mk.UC_M68K_REG_D0: 1, mk.UC_M68K_REG_D1: 5, mk.UC_M68K_REG_A0: find('Groove'), mk.UC_M68K_REG_A1: 0})
 w32(C.TIMER, 0x100); render(force=False)
-chk('Zeitgeber-Ueberlauf: Popup weiter sichtbar', screen() == native('Strum', None, 5))
+chk('Zeitgeber-Ueberlauf: Popup weiter sichtbar', screen() == native('Groove', None, 5))
 call(OVS, regs={mk.UC_M68K_REG_D0: 0}); d = dirty(); render(force=False)
 chk('Art 0 (weg): markiert, danach Bild ohne Popup', d == 1 and screen() == VIEWPIX)
 for kind in (0x55, 7):
-    w32(C.VARS + C.V_KIND, kind); w32(C.VARS + C.V_L1, find('Strum')); w32(C.VARS + C.V_L2, 0)
+    w32(C.VARS + C.V_KIND, kind); w32(C.VARS + C.V_L1, find('Groove')); w32(C.VARS + C.V_L2, 0)
     w32(C.VARS + C.V_DL, r32(C.TIMER) + 1000); good = render()
     chk('Muell-Art %#x: Zahl-Popup, kein Haenger, Register ok' % kind, good)
 
@@ -112,7 +112,7 @@ for n in (0, 9, 0xFFFFFFFF):
 try:
     from PIL import Image
     sc = 4; out = Image.new('RGB', (128 * sc + 16, (64 * sc + 16) * 4 + 16), (40, 40, 40))
-    for i, (n1, n2, val, text) in enumerate([CASES[0], CASES[8], CASES[12], ('Strum', None, -35, False)]):
+    for i, (n1, n2, val, text) in enumerate([CASES[0], CASES[8], CASES[12], ('Groove', None, -35, False)]):
         px = native(n1, n2, val, text); im = Image.new('RGB', (128, 64), (20, 20, 30))
         for (x, y) in px: im.putpixel((x, 63 - y), (230, 230, 240))
         out.paste(im.resize((128 * sc, 64 * sc), Image.NEAREST), (8, 8 + i * (64 * sc + 16)))

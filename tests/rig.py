@@ -12,15 +12,30 @@ import common as C
 
 BASE = C.BASE
 STOCK = (ROOT / 'out' / 'section_3_MAIN_OS.bin').read_bytes()
-LATCH = json.load(open(ROOT / 'elektron-model-tweaks/tweaks/model-cycles_OS1.13/01-latching-mute.json'))
 V1_ORDER = ['62-mute-solo', '63-live-mute', '64-hold-mute-v3', '65-delay-notes', '66-chorus', '67-phaser', '68-digi-delay',
             '69-razer', '70-mod-delays', '71-strum', '72-load-meter', '73-groove']
 V2_IDS = ['core', 'mute-solo', 'live-mute', 'hold-mute', 'delay-notes', 'reverb-fx', 'delay-fx', 'strum', 'load-meter', 'groove',
-          'control-mode', 'trig-select', 'fill2', 'track-filter', 'lfo-amount', 'direct-jump']
+          'control-mode', 'trig-select', 'fill2', 'track-filter', 'lfo-amount', 'direct-jump', 'sampler', 'multiline-browser', 'browser-scroll', 'level-pan-values', 'strings', 'mono', 'browser-keys', 'param-undo', 'pad-mode']
 V1SYM = {n: json.load(open(ROOT / 'solo' / f'{n}.json')).get('symbols', {}) for n in V1_ORDER}
 V2P = {}
 for f in sorted((V2 / 'out').glob('[0-9][0-9]-*.json')):
     t = json.load(open(f)); V2P[t['id']] = t
+# smp8: Browser / Scrollen / Level-Pan sind Teil des Core ('part' an den Writes). Fuer die Tests wieder als eigene
+# Teile (Core ohne sie / jeder allein), wie vorher die Patches 17..19.
+PARTS = ('multiline-browser', 'browser-scroll', 'level-pan-values', 'browser-keys')   # smp40: + browser-keys
+_c = V2P['core']
+for _i, _pid in enumerate(PARTS):
+    _pi = next(x for x in _c.get('parts', []) if x['id'] == _pid)
+    V2P[_pid] = dict(id=_pid, order=17 + _i, name=_pi['name'], requires=[], writes=[w for w in _c['writes'] if w.get('part') == _pid],
+                     symbols=_c['symbols'])
+V2P['core'] = dict(_c, writes=[w for w in _c['writes'] if 'part' not in w])
+# smp40: 01 mute-solo enthaelt latching-mute (in den Tests wie bisher LATCH, getrennt angewendet) und live-mute (eigener Teil)
+_m = V2P['mute-solo']
+V2P['live-mute'] = dict(id='live-mute', order=_m['order'], name='live-mute', requires=[],
+                        writes=[w for w in _m['writes'] if w.get('part') == 'live-mute'], symbols=_m['symbols'])
+V2P['mute-solo'] = dict(_m, writes=[w for w in _m['writes'] if 'part' not in w], requires=['latching-mute'])
+# v2.3: latching-mute ist eigener Code (g2_latch), Teil von 01; die Tests wenden ihn wie bisher getrennt an
+LATCH = dict(id='latching-mute', order=0, writes=[w for w in _m['writes'] if w.get('part') == 'latching-mute'])
 V2SYM = {k: {s: int(v, 16) for s, v in t.get('symbols', {}).items() if isinstance(v, str) and v.startswith('0x')} for k, t in V2P.items()}
 
 RET, STACK = 0x4E000000, 0x4F000000            # Ruecksprung-Stopp ; Stack (0x4F000000 +- 64 K)
@@ -50,7 +65,7 @@ def v1_image():
 
 def v2_image(ids=None, latch=True):
     ids = V2_IDS if ids is None else ids
-    img = apply(STOCK, LATCH) if latch else STOCK
+    img = apply(STOCK, LATCH) if latch else STOCK          # smp40: im Build steckt latching-mute in mute-solo (rig trennt es)
     for pid in sorted(ids, key=lambda i: V2P[i]['order']):
         img = apply(img, V2P[pid])
     return img
@@ -64,6 +79,8 @@ class Emu:
         u = s.u = Uc(UC_ARCH_M68K, UC_MODE_BIG_ENDIAN); u.ctl_set_cpu_model(mk.UC_CPU_M68K_CFV4E)
         u.reg_write(mk.UC_M68K_REG_SR, 0x2700)
         u.mem_map(0x40000000, 0x2000000); u.mem_write(BASE, img)
+        if len(img) > len(STOCK):                     # Nutzlast hinter dem MAIN OS: wie der Start-Haken nach 0x43000000
+            u.mem_map(0x43000000, 0x200000); u.mem_write(0x43000000, bytes(img[len(STOCK):]))
         buf = ctypes.create_string_buffer(0x10000); _keep.append(buf)
         u.mem_map_ptr(0x4A330000, 0x10000, UC_PROT_ALL, ctypes.addressof(buf))
         u.mem_map_ptr(0x42330000, 0x10000, UC_PROT_ALL, ctypes.addressof(buf))
@@ -72,6 +89,11 @@ class Emu:
             u.mem_map(a, n)
         s.held, s.consumed, s.copies, s.heap = set(), [], [], [HEAP0]
         s.w32(C.CUR_PAT, PATB)
+        # smp18: wie BOOT nach der Kopie der Nutzlast: Deskriptor-Tabelle des Cores (DTINIT) fuellen
+        if len(img) >= len(STOCK) + C.PAYSZ and V2SYM.get('core', {}).get('DTINIT'):
+            dti = V2SYM['core']['DTINIT']
+            if bytes(u.mem_read(dti, 2)) != b'\0\0':
+                s.call(dti, count=200000)
         if stubs:
             for t in (C.HELD, C.CONSUME, C.COPY, 0x400802E0, 0x400802EC):
                 u.hook_add(UC_HOOK_CODE, s._stub, begin=t, end=t)

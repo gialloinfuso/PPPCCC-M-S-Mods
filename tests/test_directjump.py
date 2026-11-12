@@ -185,7 +185,8 @@ REF = v2_image([i for i in V2_IDS if i != 'direct-jump'], latch=False) if ALONE 
 UIP = 0x4F046000
 OURS = [(G.M_J1, G.M_J1 + 192), (G.M_J2, G.M_J2 + 192), (G.M_J3, G.M_J3 + 108), (G.M_J4, G.M_J4 + 108),
         (G.OT_HOOK, G.OT_HOOK + 8), (G.RL_HOOK, G.RL_HOOK + 6), (G.K_HOOK, G.K_HOOK + 16),   # + addq/tst/bne (in DJK nachgebaut)
-        (G.FK_HOOK, G.FK_HOOK + 6), (G.FO_HOOK, G.FO_HOOK + 6)]
+        (G.FK_HOOK, G.FK_HOOK + 6), (G.FO_HOOK, G.FO_HOOK + 6),
+        (G.M_J5, G.M_J5 + 104), (G.HC_HOOK, G.HC_HOOK + 10), (G.HL_HOOK, G.HL_HOOK + 6), (G.HP_HOOK, G.HP_HOOK + 6)]
 FVT2 = 0x4F044800
 PURE = [(0x400CF9A8, 0x400CF9AA), (0x4006BB18, 0x4006BB22), (0x4007240C, 0x400724C0)]
 def trace(img, fn, code, flags, mode, playing):
@@ -214,7 +215,8 @@ for fn in (0x40020A7A, 0x40024AF0):
                 for pl in (0, 1):
                     want = (code == 1 and (fn == 0x40024AF0 or mode)) or \
                            (fn == 0x40020A7A and 16 <= code < 32 and fl & 1 and not fl & 8 and fl & 2 and mode) or \
-                           (fn == 0x40024AF0 and 16 <= code < 32 and fl & 1 and fl & 2 and pl)   # Fenster bleibt offen
+                           (fn == 0x40024AF0 and 16 <= code < 32 and fl & 1) or \
+                           (fn == 0x40020A7A and 16 <= code < 32 and not fl & 1 and mode)   # smp23: Fenster / Auswahl bleiben offen
                     t0, r0 = trace(REF, fn, code, fl, mode, pl); t1, r1 = trace(IMG, fn, code, fl, mode, pl)
                     if want: intended += 1; continue
                     if t0 == t1 and r0 == r1: same += 1
@@ -252,8 +254,8 @@ for fl, nm in ((1, 'Druecken'), (0, 'Loslassen')):
     chk('Fenster, FUNC %s: Original schliesst (%s); Patch: angenommen, nichts geschlossen (%s)' % (nm, o0[:2], o1[:2]),
         CLOSE in o0[0] and o1[0] == [] and o1[1] == 1 and o1[2])
 o0, o1 = ov_key(STOCK, 21, 1 | 2), ov_key(IMG, 21, 1 | 2)
-chk('Fenster, FUNC + TRIG: wie Original (Auswahl, Fenster zu, Ereignis weiter an die Pattern-Auswahl) %s' % (o1[:2],),
-    o0 == o1 and o1[0] == [SEL, CLOSE] and o1[1] == 0)
+chk('Fenster, FUNC + TRIG (smp23): Original Abschluss + zu; Patch: offen, Ereignis weiter (0) %s' % (o1[:2],),
+    o0[0] == [SEL, CLOSE] and o1[0] == [] and o1[1] == 0)
 o0, o1 = ov_key(STOCK, 3, 1), ov_key(IMG, 3, 1)
 chk('Fenster, PATTERN: wie Original (schliesst)', o0 == o1 and CLOSE in o1[0])
 # ---------------- 8 Auswahl bleibt nach dem Sprung offen
@@ -271,7 +273,8 @@ chk('Fenster, FUNC + TRIG bei laufendem Sequencer: kein Abschluss, nicht geschlo
     r[0] == [] and r[1] == 0 and r[2])
 for fl, pl, nm in ((1, 1, 'TRIG'), (1 | 2, 0, 'FUNC + TRIG gestoppt')):
     r0, r1 = ov2(REF, 21, fl, pl), ov2(IMG, 21, fl, pl)
-    chk('Fenster, %s: wie ohne direct-jump (Abschluss, schliessen) %s' % (nm, r1[:2]), r0 == r1 and r1[0] == [SEL, CLOSE])
+    chk('Fenster, %s (smp23): ohne direct-jump Abschluss + zu, jetzt offen, Ereignis weiter %s' % (nm, r1[:2]),
+        r0[0] == [SEL, CLOSE] and r1[0] == [] and r1[1] == 0)
 # ganze Folge in der Pattern-Auswahl: FUNC + TRIG druecken, loslassen -> Modus bleibt; TRIG druecken, loslassen -> Modus aus
 def seqv(img, steps_):
     e9 = Emu(img)
@@ -293,10 +296,10 @@ o = seqv(IMG, [(21, 1 | 2), (21, 0 | 2), (22, 1 | 2), (22, 0 | 2)])
 chk('Pattern-Auswahl: FUNC + TRIG, loslassen, nochmal FUNC + TRIG, loslassen: Auswahl bleibt an %s' % o,
     [x[0] for x in o] == [1, 1, 1, 1] and o[0][1])
 o0 = seqv(REF, [(21, 1), (21, 0)]); o1 = seqv(IMG, [(21, 1), (21, 0)])
-chk('Pattern-Auswahl: TRIG, loslassen (normaler Wechsel): Auswahl aus wie ohne direct-jump %s %s' % (o0, o1),
-    [x[0] for x in o0] == [x[0] for x in o1] and o1[-1][0] == 0)
+chk('Pattern-Auswahl: TRIG, loslassen (normaler Wechsel): ohne direct-jump aus, jetzt bleibt sie an (smp23) %s %s' % (o0, o1),
+    o0[-1][0] == 0 and o1[-1][0] == 1)
 o = seqv(IMG, [(21, 1 | 2), (21, 0 | 2), (23, 1), (23, 0)])
-chk('nach Direct Jumps ein normaler TRIG: Auswahl danach aus %s' % o, o[-1][0] == 0)
+chk('nach Direct Jumps ein normaler TRIG: Auswahl bleibt an (smp23) %s' % o, o[-1][0] == 1)
 # ---------------- 9 ganze Folge wie am Geraet: Fenster zuerst (0x40024af0), bei Rueckgabe 0 die Pattern-Auswahl (0x40020a7a), nach
 # jedem Ereignis der UIStates-Beobachter der Auswahl (0x400206c6, laeuft bei jeder Aenderung von UIStates): er schaltet den
 # Auswahlmodus aus und schliesst das Fenster, wenn PATTERN nicht gehalten (+0x90) und die Auswahl nicht "wartend" ist (+0x7c;
@@ -337,15 +340,85 @@ o, req, _ = tap_seq(IMG, FT + [(1, 1 | 2), (22, 1 | 2), (22, 0 | 2), (1, 0)])
 chk('PATTERN getippt, FUNC + TRIG, los, nochmal FUNC + TRIG, los (Beobachter nach jedem Ereignis): Auswahl und Fenster bleiben %s'
     % o, all(x == (1, 1) for x in o) and req)
 o, req, _ = tap_seq(IMG, FT + [(23, 1), (23, 0)])
-chk('danach normaler TRIG: Auswahl aus, Fenster zu %s' % o[-2:], o[-1] == (0, 0))
+chk('danach normaler TRIG: Auswahl und Fenster bleiben (smp23) %s' % o[-2:], o[-1] == (1, 1))
 o, req, _ = tap_seq(IMG, FT + [(3, 1), (3, 0)])
 chk('nach Direct Jump PATTERN tippen: Auswahl aus, Fenster zu %s' % o[-2:], o[-1] == (0, 0))
 o0, _, _ = tap_seq(REF, [(3, 1), (3, 0)]); o1, _, _ = tap_seq(IMG, [(3, 1), (3, 0)])
 chk('PATTERN tippen im Fenster (ohne Sprung): wie ohne direct-jump %s %s' % (o0, o1), o0 == o1 and o1[-1] == (0, 0))
 o0, _, _ = tap_seq(REF, [(23, 1), (23, 0)]); o1, _, _ = tap_seq(IMG, [(23, 1), (23, 0)])
-chk('nur TRIG (normaler Wechsel): wie ohne direct-jump %s %s' % (o0, o1), o0 == o1 and o1[-1] == (0, 0))
+chk('nur TRIG (normaler Wechsel): ohne direct-jump zu, jetzt bleiben Auswahl und Fenster (smp23) %s %s' % (o0, o1),
+    o0[-1] == (0, 0) and o1[-1] == (1, 1))
+o, _, _ = tap_seq(IMG, [(23, 1), (23, 0), (24, 1), (24, 0), (3, 1), (3, 0)])
+chk('TRIG, TRIG, dann PATTERN tippen: offen bis PATTERN, dann Auswahl aus, Fenster zu %s' % o, o[3] == (1, 1) and o[-1] == (0, 0))
 o, req, log = tap_seq(IMG, [(1, 1 | 2), (21, 1 | 2), (21, 0 | 2), (1, 0), (3, 0)], held_pattern=True)
 chk('PATTERN gehalten, FUNC + TRIG, los, PATTERN los: Auswahl bleibt (Fenster der Firmware wird geoeffnet) %s' % o,
     all(x[0] == 1 for x in o) and req and 0x40020730 in log)
 
+# ---------------- 10 smp23: kein Zeitablauf des Fensters (Vtable 0x40101184 +0x2c)
+def tick(img):
+    e = Emu(img); got = []
+    e.u.mem_write(CLOSE, b'\x4e\x75'); e.u.hook_add(UC_HOOK_CODE, lambda u, a, z, _: got.append(a), begin=CLOSE, end=CLOSE)
+    W_ = 0x4F048000; e.u.mem_write(W_, bytes(0x100)); e.w32(W_, FVT); e.w32(FVT + 0x28, CLOSE); e.w32(W_ + 0x60, 1); e.w32(W_ + 0x64, 60)
+    fn = e.r32(G.WIN_TICK)
+    for _ in range(3): e.call(fn, W_, count=20000)
+    return fn, got
+t0, t1 = tick(REF), tick(IMG)
+chk('Fenster-Tick: ohne Patch Zeitablauf (zu nach Ablauf) %s; mit Patch 0x40075f2e, nie zu %s' % (t0, t1),
+    t0[0] == G.TICK_ORIG and t0[1] == [CLOSE] and t1[0] == G.TICK_NONE and t1[1] == [])
+# ---------------- 11 smp39: Kopieren / Loeschen / Einfuegen (TRIG + REC / PLAY / STOP) lassen das Fenster der Auswahl offen
+WIN, WVT, WCTL, WTAG, WCLOSE = 0x4F049000, 0x4F049200, 0x4F049300, 0x4F049400, 0x4F049500
+def win_setup(e, tags=(6,)):
+    e.u.mem_write(WIN, bytes(0x100)); e.w32(WIN, WVT); e.w32(WVT + 0x28, WCLOSE); e.u.mem_write(WCLOSE, b'\x4e\x75')
+    e.u.mem_write(WTAG, b''.join(struct.pack('>I', t) for t in tags) + bytes(16))
+    e.w32(WIN + 0x1C, WTAG); e.w32(WIN + 0x20, WTAG + 4 * len(tags)); e.w32(WIN + 0x24, WTAG + 16)
+    e.u.mem_write(WCTL, struct.pack('>III', 0, 1, 1))
+def sel_key(img, code, stop_at):
+    e = Emu(img); log = []
+    def ret(u): u.reg_write(mk.UC_M68K_REG_PC, e.r32(u.reg_read(mk.UC_M68K_REG_A7))); u.reg_write(mk.UC_M68K_REG_A7, u.reg_read(mk.UC_M68K_REG_A7) + 4)
+    e.u.hook_add(UC_HOOK_CODE, lambda u, a, z, _: (u.reg_write(mk.UC_M68K_REG_D0, UIP), ret(u)), begin=0x400CF9A8, end=0x400CF9A8)
+    for a_ in (0x4001190C, 0x400CF866):
+        e.u.hook_add(UC_HOOK_CODE, lambda u, a, z, _, a_=a_: (log.append(a_), u.reg_write(mk.UC_M68K_REG_D0, 1), ret(u)), begin=a_, end=a_)
+    st = {}
+    def stop(u, a, z, _):
+        st['at'] = a; st['a4'] = u.reg_read(mk.UC_M68K_REG_A4); st['a5'] = u.reg_read(mk.UC_M68K_REG_A5)
+        st['top'] = e.r32(u.reg_read(mk.UC_M68K_REG_A7)); u.emu_stop()
+    if stop_at: e.u.hook_add(UC_HOOK_CODE, stop, begin=stop_at, end=stop_at)
+    e.w8(UIP + 0x184, 1); e.w8(UIP + 0x185, 1); e.w32(G.PLAYING, 1)
+    e.u.mem_write(VIEW, bytes(0xC0)); e.w32(VIEW + 0x74, 0xFFFFFFFF); e.w8(VIEW + 0x7C, 1); e.w32(VIEW + 0x8C, 1 << 3)
+    e.w32(VIEW + 0x94, WIN); e.w32(VIEW + 0x98, WCTL); win_setup(e)
+    e.w32(EV + 0x0C, code); e.w32(EV + 0x10, 1)
+    try: d0, good = e.call(0x40020A7A, VIEW, EV, count=400000)
+    except Exception: d0, good = None, None
+    return log, st, e.r32(WIN + 0x20) - e.r32(WIN + 0x1C), d0, good
+r0, r1 = sel_key(REF, 9, None), sel_key(IMG, 9, None)
+chk('TRIG + REC (Kopieren): ohne Patch Kennzeichen bleiben (%d B), mit Patch geleert (%d B); Kopie aufgerufen, Rueckgabe gleich'
+    % (r0[2], r1[2]), r0[0] == r1[0] and 0x4001190C in r1[0] and r0[2] == 4 and r1[2] == 0 and r0[3:] == r1[3:] and r1[4])
+for code, at, reg in ((10, 0x40020FBE, 'a4'), (11, 0x40021144, 'a5')):
+    r0, r1 = sel_key(REF, code, at), sel_key(IMG, code, at)
+    chk('TRIG + %s: weiter bei %#x mit %s = Auswahl + %#x und Stapel wie die Firmware; Kennzeichen 4 -> %d B'
+        % ({10: 'PLAY', 11: 'STOP'}[code], at, reg, r1[1].get(reg, 0) - VIEW, r1[2]),
+        r0[1] == r1[1] and r1[1].get('at') == at and r0[2] == 4 and r1[2] == 0)
+r1 = sel_key(IMG, 9, None)
+e_ = Emu(IMG); e_.u.mem_write(VIEW, bytes(0xC0)); e_.u.mem_write(WCTL, struct.pack('>III', 0, 0, 0)); e_.w32(VIEW + 0x94, WIN); e_.w32(VIEW + 0x98, WCTL)
+win_setup(e_); e_.u.mem_write(WCTL, struct.pack('>III', 0, 0, 0))
+d0, good = e_.call(S['UNT'], regs={mk.UC_M68K_REG_A2: VIEW}, count=2000)
+chk('UNT: Fenster schon weg (use_count 0) -> nichts geaendert', e_.r32(WIN + 0x20) - e_.r32(WIN + 0x1C) == 4 and good)
+# echte Overlay-Verwaltung 0x4007700e (bis nach der Schliess-Schleife): ein neues Popup mit Kennzeichen 6 schliesst das Fenster
+# (Kennzeichen 6), ohne Kennzeichen bleibt es
+MGR, POP, SPP = 0x4F04A000, 0x4F04A200, 0x4F04A400
+def push(tags):
+    e = Emu(IMG); got = []
+    win_setup(e, tags)
+    e.u.hook_add(UC_HOOK_CODE, lambda u, a, z, _: got.append(a), begin=WCLOSE, end=WCLOSE)
+    e.u.hook_add(UC_HOOK_CODE, lambda u, a, z, _: (u.reg_write(mk.UC_M68K_REG_PC, e.r32(u.reg_read(mk.UC_M68K_REG_A7))),
+                 u.reg_write(mk.UC_M68K_REG_A7, u.reg_read(mk.UC_M68K_REG_A7) + 4)), begin=0x40001D2C, end=0x40001D2C)
+    NODE = MGR + 0x80
+    e.u.mem_write(MGR, bytes(0x100)); e.w32(MGR + 0x14, NODE); e.w32(MGR + 0x18, NODE); e.w32(NODE, MGR + 0x14); e.w32(NODE + 4, MGR + 0x14); e.w32(NODE + 8, WIN)
+    e.u.mem_write(POP, bytes(0x40)); e.w32(POP + 0x1C, POP + 0x30); e.w32(POP + 0x20, POP + 0x34); e.w32(POP + 0x30, 6)
+    e.w32(SPP, POP); e.w32(SPP + 4, 0)
+    e.u.hook_add(UC_HOOK_CODE, lambda u, a, z, _: u.emu_stop(), begin=0x400770EE, end=0x400770EE)
+    e.call(0x4007700E, MGR, SPP, 0, count=200000)
+    return bool(got)
+chk('Overlay-Verwaltung 0x4007700e: Fenster mit Kennzeichen 6 wird von einem Popup (6) geschlossen, ohne Kennzeichen nicht',
+    push((6,)) and not push(()))
 done()

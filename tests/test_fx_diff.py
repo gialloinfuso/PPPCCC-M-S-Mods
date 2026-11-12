@@ -9,7 +9,10 @@ IN, OUT, PAR = 0x8000B990, 0x8000BB90, 0x4F020000
 V1, V2 = v1_image(), v2_image()
 R1, R2 = int(V1SYM['70-mod-delays']['R'], 16), V2SYM['reverb-fx']['R']
 MD1, MD2 = int(V1SYM['70-mod-delays']['md'], 16), V2SYM['delay-fx']['MD']
-DESC = lambda k: 0x4010DCE0 + 0x38 * k
+def _dt(e):
+    try: return e.r32(C.DTD(0) + 0x2C) != 0
+    except Exception: return False
+DESCE = lambda e, k: C.DTD(k) if _dt(e) else 0x4010DCE0 + 0x38 * k   # smp18: v2 liest die Kopie des Cores, v1 die der Firmware
 FN39, FN40 = 0x40A71754 + 3900 + 0x20, 0x40A71754 + 4000 + 0x20
 
 
@@ -43,12 +46,15 @@ def block(e, entry, frames, p0, p1):
     return [struct.unpack('>ii', raw[i:i + 8]) for i in range(0, 256, 8)], list(e.calls), good
 
 
-def names(e, ks): return [(e.cstr(e.r32(DESC(k) + 0x2C)), e.cstr(e.r32(DESC(k) + 0x34))) for k in ks]
+REN = {'RAZR': 'Razr', 'VIBDEL Send': 'ViDel Send', 'VIBDEL Time': 'ViDel Time', 'VIBDEL Fdbk': 'ViDel Fdbk', 'VIBD': 'ViDl',
+       'CHODEL Send': 'ChDel Send', 'CHODEL Time': 'ChDel Time', 'CHODEL Fdbk': 'ChDel Fdbk', 'CHOD': 'ChDl'}   # smp22 (Pip)
+def ren(nl): return [tuple(REN.get(x, x) for x in t) for t in nl]
+def names(e, ks): return [(e.cstr(e.r32(DESCE(e, k) + 0x2C)), e.cstr(e.r32(DESCE(e, k) + 0x34))) for k in ks]
 
 
 # ================= Reverb-Platz
 a, b = mkemu(V1), mkemu(V2)
-random.seed(11); same = regs = True; nm_same = True; seen = set()
+random.seed(11); same = regs = True; nm_same = True; seen = set(); rz_pairs = True; rz1, rz2 = [], []
 mode = 1
 for bl in range(1200):
     if bl % 100 == 0:
@@ -58,18 +64,28 @@ for bl in range(1200):
     fr = [(random.randint(-2**30, 2**30), random.randint(-2**30, 2**30)) if bl % 13 < 9 else (0, 0) for _ in range(32)]
     if bl % 211 == 7: fr = [(2**31 - 1, 2**31 - 1) if i % 2 else (-2**31, -2**31) for i in range(32)]
     o1, c1, g1 = block(a, R1, fr, S << 8, D << 8); o2, c2, g2 = block(b, R2, fr, S << 8, D << 8)
-    same &= (o1 == o2 and c1 == c2); regs &= g1 and g2; seen.add(mode)
+    if mode == 4 and D > 0:            # smp22: RAZR-Phaser mit halber Rate -> nicht bitgleich, Vergleich unten
+        rz_pairs &= all(o2[2 * k] == o2[2 * k + 1] for k in range(16)) and c1 == c2
+        rz1 += o1; rz2 += o2
+    else:
+        same &= (o1 == o2 and c1 == c2)
+    regs &= g1 and g2; seen.add(mode)
     if bl % 100 == 1:
         f1 = (a.r32(FN39), a.r32(FN40)); f2 = (b.r32(FN39), b.r32(FN40))
         fsame = f1 == f2 if mode == 0 else (f2[0] == f2[1] and bytes(a.u.mem_read(f1[0], 26)) == bytes(b.u.mem_read(f2[0], 26)))
-        nm_same &= names(a, (27, 39, 40)) == names(b, (27, 39, 40)) and fsame
-chk('Reverb-Platz: 1200 Bloecke bitgleich mit v1 (Reverb, Chorus I/II, Phaser, RAZR, Wechsel, Vollaussteuerung) %s' % sorted(seen), same)
+        nm_same &= ren(names(a, (27, 39, 40))) == names(b, (27, 39, 40)) and fsame
+chk('Reverb-Platz: 1200 Bloecke bitgleich mit v1 (Reverb, Chorus I/II, Phaser, RAZR Speed 0, Wechsel, Vollaussteuerung) %s' % sorted(seen), same)
+import numpy as np
+A1, A2 = np.array(rz1, float), np.array(rz2, float)
+rdb = 20 * np.log10(A2.std() / A1.std()); cor = float(np.corrcoef(A1.ravel(), A2.ravel())[0, 1])
+chk('RAZR mit Speed (Phaser halbe Rate, smp22): Frames paarweise gleich, Pegel wie v1 (%.2f dB), Korrelation %.3f'
+    % (rdb, cor), rz_pairs and len(rz1) > 0 and abs(rdb) < 0.5 and cor > 0.9)
 chk('Reverb-Platz: Register/Stack ok', regs)
 chk('Reverb-Platz: Parameternamen und Anzeigefunktionen wie v1 in allen Modi (F0 an neuer Adresse, gleicher Code)', nm_same)
 for m, nm in ((1, 'Cho1 Send'), (3, 'Phas Send'), (4, 'Razr Mix')):
     b.w8(b.hdr(C.P_RFX), m); block(b, R2, [(0, 0)] * 32, 0, 0)
     chk('  Modus %d: Name %s' % (m, names(b, (27,))[0][0]), names(b, (27,))[0][0] == nm)
-for junk in (5, 9, 200):
+for junk in (8, 9, 200):                     # smp9: 5..7 = Hall / Room / Plate (test_reverbs)
     b.w8(b.hdr(C.P_RFX), junk); _, c, g = block(b, R2, [(1, 1)] * 32, 0, 0)
     chk('Muell %d im Pattern-Byte -> Reverb der Firmware, RMODE 0' % junk, c and c[0][0] == 'REV' and g and b.r8(0x4233C3FC) == 0)
 b.w32(C.CUR_PAT, 0); _, c, _ = block(b, R2, [(1, 1)] * 32, 0, 0)
@@ -80,7 +96,7 @@ b.w32(C.CUR_PAT, PATB)
 MAP = {0: 1, 1: 0, 2: 3, 3: 2}                      # v2-Typ -> v1-Byte
 a, b = mkemu(V1), mkemu(V2)
 DN = {0: names(b, (26, 37, 38)), 1: [('Digi Send', 'DIGS'), ('Digi Time', 'TIME'), ('Digi Fdbk', 'FDBK')],
-      2: [('VIBDEL Send', 'VIBD'), ('VIBDEL Time', 'TIME'), ('VIBDEL Fdbk', 'FDBK')], 3: [('CHODEL Send', 'CHOD'), ('CHODEL Time', 'TIME'), ('CHODEL Fdbk', 'FDBK')]}
+      2: [('ViDel Send', 'ViDl'), ('ViDel Time', 'TIME'), ('ViDel Fdbk', 'FDBK')], 3: [('ChDel Send', 'ChDl'), ('ChDel Time', 'TIME'), ('ChDel Fdbk', 'FDBK')]}
 random.seed(7); same = regs = True; seen = set(); nm_same = True
 for bl in range(1500):
     if bl % 125 == 0:
@@ -142,26 +158,32 @@ for enc, d in [(14, 1)] * 20 + [(14, -1)] * 9 + [(15, 1)] * 14 + [(15, -1)] * 5:
     r1 = a.enc(enc, d, {2}); r2 = b.enc(enc, d, {2})
     ok_ &= r1['passed'] == r2['passed'] == 0 and r2['regs'] and r2['sp']
     seq1.append((a.r8(0x404E9B5D), {1: 0, 0: 1, 3: 2, 2: 3}[a.r8(0x404E9B5C)])); seq2.append((b.r8(b.hdr(C.P_RFX)), b.r8(b.hdr(C.P_DFX))))
-chk('TRACK + Reverb Size / Delay Time: gleiche Schrittfolge wie v1 %s' % seq2[3::4], seq1 == seq2)
+# smp9: Reverb-Platz bis 7 (Hall / Room / Plate), v1 nur bis 4: gleiche Rasten, Delay-Platz gleich
+want_r = [min(7, (i + 1) // 4) for i in range(20)]; want_r += [want_r[-1] - (j + 1) // 4 for j in range(9)]
+want_r += [want_r[-1]] * 19
+chk('TRACK + Reverb Size / Delay Time: Schrittfolge (v1 + Modi 5..7) %s' % seq2[3::4],
+    [x[0] for x in seq2] == want_r and [x[1] for x in seq2] == [x[1] for x in seq1] and max(x[0] for x in seq1) == 4)
 chk('  Ereignis mit Drehung 0 weiter (Firmware-Popup), Register/Stack ok', ok_)
-chk('  Namen sofort umgestellt (wie v1)', names(a, (27, 39, 40, 26, 37, 38)) == names(b, (27, 39, 40, 26, 37, 38)))
+a.w8(0x404E9B5D, want_r[-1]); block(a, R1, [(0, 0)] * 32, 0, 0); block(b, R2, [(0, 0)] * 32, 0, 0)   # v1 auf denselben Modus
+chk('  Namen sofort umgestellt (wie v1, smp22-Namen)', ren(names(a, (27, 39, 40, 26, 37, 38))) == names(b, (27, 39, 40, 26, 37, 38)))
 for enc, held in ((14, ()), (15, ()), (14, (1,)), (13, (2,)), (16, (2,))):
     r = b.enc(enc, 1, held)
     exp = 0 if (held == (1,) and False) else 1
     chk('  Encoder %d mit %s: durchgereicht' % (enc, held or 'nichts'), r['passed'] == 1 and not r['skipped'] and r['sp'])
-# SETTINGS + DELAY SEND
+# FUNC + DELAY SEND (smp39; v1: SETTINGS + DELAY SEND)
 for t in (2, 3, 0):
     b.w8(b.hdr(C.P_DFX), t); a.w8(0x404E9B5C, MAP[t])
     a.w8(0x404E9B5B, 120); b.w8(b.hdr(C.P_DSPD), 120 ^ 64)
     s1, s2 = [], []
     for d in (3, 5, -2, 10, -127, -1, 4):
-        r1 = a.enc(8, d, {13}); r2 = b.enc(8, d, {13})
+        r1 = a.enc(8, d, {13}); r2 = b.enc(8, d, {1})
         s1.append(a.r8(0x404E9B5B)); s2.append(b.r8(b.hdr(C.P_DSPD)) ^ 64)
-        ok2 = r2['skipped'] and r2['sp'] and r2['regs'] and r2['consumed'] == [13]
+        ok2 = r2['skipped'] and r2['sp'] and r2['regs'] and r2['consumed'] == [1]
     lab = b.cstr(b.r32(C.VARS + C.V_L1)); lab2 = b.cstr(b.r32(C.VARS + C.V_L2))
-    chk('SETTINGS + DELAY SEND (Typ %d): Speed wie v1 %s, verschluckt, consume(13), Popup %s / %s = %d' % (t, s2, lab, lab2, b.r32(C.VARS + C.V_VAL)),
-        s1 == s2 and ok2 and lab == {2: 'VIBDEL', 3: 'CHODEL', 0: 'Delay'}[t] and lab2 == 'Speed' and b.r32(C.VARS + C.V_VAL) == s2[-1]
+    chk('FUNC + DELAY SEND (Typ %d): Speed wie v1 %s, verschluckt, consume(1), Popup %s / %s = %d' % (t, s2, lab, lab2, b.r32(C.VARS + C.V_VAL)),
+        s1 == s2 and ok2 and lab == {2: 'ViDel', 3: 'ChDel', 0: 'Delay'}[t] and lab2 == 'Speed' and b.r32(C.VARS + C.V_VAL) == s2[-1]
         and b.r32(C.VARS + C.V_KIND) == 1)
-r = b.enc(8, 1, ()); chk('DELAY SEND ohne SETTINGS: durchgereicht', r['passed'] == 1)
+r = b.enc(8, 1, ()); chk('DELAY SEND ohne FUNC: durchgereicht', r['passed'] == 1)
+r = b.enc(8, 1, (13,)); chk('SETTINGS + DELAY SEND (alte Geste): durchgereicht', r['passed'] == 1)
 r = b.enc(8, 1, (2,)); chk('TRACK + DELAY SEND (CONTROL ALL): durchgereicht', r['passed'] == 1)
 done()

@@ -23,6 +23,7 @@ import struct, sys
 from common import *                 # noqa: F401,F403
 import common as C
 import g2_core as core
+from cfasm import asm, done as adone
 
 M_A1, M_A2, M_A3 = 0x4014A890, 0x401592BC, 0x4014AA34
 SIZE = {M_A1: 108, M_A2: 192, M_A3: 108}
@@ -36,40 +37,74 @@ TOP = 0x7F00
 
 
 def build_a2(st):
-    a = A(M_A2); w, l = a.w, a.l32
-    a.label('AMT')
-    w(0x4FEF, 0xFFF0, 0x48D7, 0x0C0C)                                     # lea -16(sp),sp ; movem.l d2-d3/a2-a3,(sp)
-    w(0x246F, 0x0014, 0x45EA, 0x000E, 0x47F9); l(st)   # a2 = obj + 14 ; a3 = Sicherung
-    w(0x7405, 0x263C); l(TOP)
-    a.label('pre')
-    w(0x36AA, 2 * K_DEP)                                                  # Depth sichern
-    w(0x73EB, 0x000C, 0x0A81); l(TOP); w(0xB283); a.bcc(CC, 'sk')         # d1 = Amount (vom letzten Block)
-    w(0x716A, 2 * K_DEP, 0x0480); l(0x4000); w(0x4C01, 0x0800, 0x4C43, 0x0800, 0x0680); l(0x4000)
-    w(0x3540, 2 * K_DEP)                                                  # Depth' = Mitte + (Depth - Mitte) Amount / 127
-    a.label('sk')
-    w(0x45EA, 0x0042, 0x548B, 0x5382); a.bcc(PL, 'pre')
-    w(0x2F2F, 0x001C, 0x2F2F, 0x001C, 0x2F2F, 0x001C, 0x4EB9); l(LFO_FN); w(0x4FEF, 0x000C)
-    w(0x246F, 0x0014, 0x45EA, 0x000E, 0x47F9); l(st)
-    w(0x7405)
-    a.label('po')
-    w(0x3553, 2 * K_DEP)                                                  # Depth zurueck
-    w(0x73EA, 2 * K_AMT, 0x0A81); l(TOP); w(0x3741, 0x000C)               # Amount (mit LFO-Modulation) merken, XOR 0x7f00
-    w(0x45EA, 0x0042, 0x548B, 0x5382); a.bcc(PL, 'po')
-    w(0x4CD7, 0x0C0C, 0x4FEF, 0x0010, 0x4E75)
-    code = a.done()
+    a = A(M_A2)
+    asm(a, f'''
+    ; ---------------- AMT: statt jsr LFO (obj, Tempo, Maske); Depth je Track mit Amount skalieren, LFO, Depth zurueck
+    AMT:    lea     -16(sp),sp
+            movem.l d2-d3/a2-a3,(sp)
+            movea.l 20(sp),a2
+            lea     14(a2),a2                ; a2 = obj + 14 ; a3 = Sicherung
+            lea     {st:#x},a3
+            moveq   #5,d2
+            move.l  #{TOP:#x},d3
+    pre:    move.w  {2 * K_DEP}(a2),(a3)     ; Depth sichern
+            mvz.w   12(a3),d1                ; d1 = Amount (vom letzten Block)
+            eori.l  #{TOP:#x},d1
+            cmp.l   d3,d1
+            bcc     sk
+            mvs.w   {2 * K_DEP}(a2),d0
+            subi.l  #0x4000,d0
+            muls.l  d1,d0
+            divs.l  d3,d0
+            addi.l  #0x4000,d0
+            move.w  d0,{2 * K_DEP}(a2)       ; Depth' = Mitte + (Depth - Mitte) Amount / 127
+    sk:     lea     66(a2),a2
+            addq.l  #2,a3
+            subq.l  #1,d2
+            bpl     pre
+            move.l  28(sp),-(sp)
+            move.l  28(sp),-(sp)
+            move.l  28(sp),-(sp)
+            jsr     {LFO_FN:#x}
+            lea     12(sp),sp
+            movea.l 20(sp),a2
+            lea     14(a2),a2
+            lea     {st:#x},a3
+            moveq   #5,d2
+    po:     move.w  (a3),{2 * K_DEP}(a2)     ; Depth zurueck
+            mvz.w   {2 * K_AMT}(a2),d1       ; Amount (mit LFO-Modulation) merken, XOR 0x7f00
+            eori.l  #{TOP:#x},d1
+            move.w  d1,12(a3)
+            lea     66(a2),a2
+            addq.l  #2,a3
+            subq.l  #1,d2
+            bpl     po
+            movem.l (sp),d2-d3/a2-a3
+            lea     16(sp),sp
+            rts
+    ''')
+    code = adone(a)
     check_cf(code, M_A2)
     return code, a.lab
 
 
 def build_a3():
-    a = A(M_A3); w, l = a.w, a.l32
-    # ---------------- AH: Sound-Slot (a0 Satz, a1 Sound, d1 = 0 Laden / 1 Speichern)
-    a.label('AH')
-    w(0x4A81); a.bcc(NE, 'sv')
-    w(0x71A8, 0x0054, 0x0A80); l(0x7F); w(0xE188, 0x3340, 20 + 2 * K_AMT, 0x4E75)
-    a.label('sv')
-    w(0x71A9, 20 + 2 * K_AMT, 0x0A80); l(0x7F); w(0x1140, 0x0054, 0x4E75)
-    code = bytearray(a.done())
+    a = A(M_A3)
+    asm(a, f'''
+    ; ---------------- AH: Sound-Slot (a0 Satz, a1 Sound, d1 = 0 Laden / 1 Speichern)
+    AH:     tst.l   d1
+            bne     sv
+            mvz.b   84(a0),d0                ; Laden: Amount = (Byte ^ 127) << 8
+            eori.l  #127,d0
+            lsl.l   #8,d0
+            move.w  d0,{20 + 2 * K_AMT}(a1)
+            rts
+    sv:     mvz.b   {20 + 2 * K_AMT}(a1),d0  ; Speichern: Byte = (Amount >> 8) ^ 127
+            eori.l  #127,d0
+            move.b  d0,84(a0)
+            rts
+    ''')
+    code = bytearray(adone(a))
     check_cf(bytes(code), M_A3)
     while len(code) % 4: code += b'\0'
     st = M_A3 + len(code); code += bytes(24)                              # 6 Depth-Worte, 6 Amount-Worte (XOR 0x7f00)
@@ -80,21 +115,29 @@ def build_a3():
 
 
 def build_a1():
-    a = A(M_A1); w, l = a.w, a.l32
-    a.label('W')
-    w(0x2F2F, 0x0010, 0x2F2F, 0x0010, 0x2F2F, 0x0010, 0x2F2F, 0x0010)   # (Ansicht, Knopf, FUNC, -1) kopieren
-    w(0x4879); l(0); fix = len(a.b) - 4                                   # pea POST
-    a.orig(LOOKUP, 6)                                                     # verschobener Prolog der Firmware
-    w(0x4EF9); l(LOOKUP_CONT)
-    a.label('POST')                                                       # d0 = Deskriptor der Firmware
-    w(0x222F, 0x0004, 0x0C81); l(ENC_LFO); a.bcc(NE, 'out')
-    w(0x2F00, 0x4878, KEY_RETRIG, 0x4EB9); l(C.HELD); w(0x588F, 0x2200, 0x201F, 0x4A81); a.bcc(EQ, 'out')
-    w(0x223C); l(FMT_INT); w(0x23C1); l(REC + 100 * D_AMT + 0x20); w(0x42B9); l(REC + 100 * D_AMT + 0x2C)   # UI-Objekt 5
-    w(0x7000 | D_AMT)
-    a.label('out')
-    w(0x4FEF, 0x0010, 0x4E75)
-    code = bytearray(a.done())
-    code[fix:fix + 4] = struct.pack('>I', a.lab['POST'])
+    a = A(M_A1)
+    asm(a, f'''
+    ; smp12: der Haken der Knopf-Suche (0x4001e814) gehoert jetzt dem Core (Attack); POST meldet sich in LKSLOT an
+    ; ---------------- POST: d0 = Deskriptor der Firmware; LFO SPEED + RETRIG -> Amount
+    POST:   move.l  4(sp),d1
+            cmpi.l  #{ENC_LFO},d1
+            bne     out
+            move.l  d0,-(sp)
+            pea     {KEY_RETRIG}.w
+            jsr     {C.HELD:#x}
+            addq.l  #4,sp
+            move.l  d0,d1
+            move.l  (sp)+,d0
+            tst.l   d1
+            beq     out
+            move.l  #{FMT_INT:#x},d1         ; UI-Objekt 5
+            move.l  d1,{REC + 100 * D_AMT + 0x20:#x}
+            clr.l   {REC + 100 * D_AMT + 0x2C:#x}
+            moveq   #{D_AMT},d0
+    out:    lea     16(sp),sp
+            rts
+    ''')
+    code = bytearray(adone(a))
     check_cf(bytes(code), M_A1)
     return bytes(code), a.lab
 
@@ -114,7 +157,7 @@ def tweak(img):
     W = Writes(base)
     for va, b in parts.items():
         W.mask(va, b, SIZE[va])
-    W.hook(LOOKUP, LOOKUP_CK, jmp(lab['W']))
+    core.lkslot_write(W, lab['POST'])
     W.hook(LFO_HOOK, jsr(LFO_FN), jsr(lab['AMT']))
     assert struct.unpack_from('>i', base, C.DESC(D_AMT) - BASE)[0] == -1, "Deskriptor 5 nicht frei"
     W.put(C.DESC(D_AMT), desc_row(lab))
@@ -123,9 +166,9 @@ def tweak(img):
                  ["New parameter LFO Amount (0..127) after LFO depth: 0 = the LFO has no effect, 127 = depth works fully (default).",
                   "Hold RETRIG and turn the LFO SPEED knob = LFO Amount of the track. p-locks, LFO and velocity target, saved with the sound.",
                   "Erzeugt von v2/g2_lfoamount.py."], W,
-                 requires=['core'], hooks=[f"{x:#x}" for x in (LOOKUP, LFO_HOOK)],
+                 requires=['core'], hooks=[f"{x:#x}" for x in (LFO_HOOK,)],
                  memory=[{"va": f"{lab['ST']:#x}", "size": 24, "ram": True, "use": "depth backup + amount per track"}],
-                 symbols={k: f"{lab[k]:#x}" for k in ('W', 'POST', 'AMT', 'AH', 'ST')},
+                 symbols={k: f"{lab[k]:#x}" for k in ('POST', 'AMT', 'AH', 'ST')},
                  params={"enc_lfo": ENC_LFO, "key_retrig": KEY_RETRIG, "desc": D_AMT, "k": K_AMT, "rec_byte": 84})
 
 

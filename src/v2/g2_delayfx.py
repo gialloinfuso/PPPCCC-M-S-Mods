@@ -2,7 +2,7 @@
 """Mod-Gruppe 'delay-fx' (v2): Digital Delay, VIBDEL, CHODEL auf dem Delay-Platz. Braucht nur 'core'.
 
 Bedienung: TRACK halten + Delay Time drehen (4 Rastungen je Stufe): Delay -> Digital -> VIBDEL -> CHODEL.
-  SETTINGS halten + DELAY SEND drehen: Modulations-Speed 0..127 (Popup 'VIBDEL/CHODEL/Delay' / 'Speed').
+  FUNC halten + DELAY SEND drehen (smp39; vorher SETTINGS): Modulations-Speed 0..127 (Popup 'VIBDEL/CHODEL/Delay' / 'Speed').
 Gespeichert im Pattern: Kopf-Byte 53 = Typ (0 Delay, 1 Digital, 2 VIBDEL, 3 CHODEL; ungueltig = 0),
   Byte 54 = Speed XOR 64 (neues Pattern: 64).
 Klang: Byte fuer Byte wie v1 (Schleifen gen_digidelay_113 / gen_moddelay_113). Geaendert:
@@ -12,7 +12,7 @@ Klang: Byte fuer Byte wie v1 (Schleifen gen_digidelay_113 / gen_moddelay_113). G
   TC: Delay-Zeit wie die Firmware; mit 'delay-notes' (jsr am DSP-Befehl 0x400581b8) dessen exakte Triolen, sonst
   addi.l #$100 (zur Laufzeit erkannt, keine Abhaengigkeit).
   DFXH (Core-Slot 1): TRACK + Delay Time -> MODESW(Byte 53, Max 3, Rueckruf DSYNC).
-  DSPD (Core-Slot 1, gleicher Handler): SETTINGS + DELAY SEND -> Speed.
+  DSPD (Core-Slot 1, gleicher Handler): FUNC + DELAY SEND -> Speed.
 Speicher: 0x40185f48 (Digital-Schleife), 0x40160e6c (Digital-Setup), 0x4018a788 (Mod-Schleife), 0x401904b4 (Mod-Setup),
   0x4018fc74 (MD, DSYNC, W2, TC), 0x40160864 (Namen), 0x40160b6c (Handler + Texte).
 RAM: Digital 0x4233c140 (20 B), Mod 0x4233c320 (56 B), DMIR 0x4233c3fd, SMIR 0x4233c3fe; Zeile 0x4a400000 (obere Haelfte).
@@ -25,6 +25,7 @@ import g2_core as core
 import gen_fx4 as fx
 import gen_digidelay_113 as dd
 import gen_moddelay_113 as md
+from cfasm import asm, done as adone
 
 M_DL, M_DS, M_LOOP, M_SETUP, M_MD, M_H = 0x40185F48, 0x40160E6C, 0x4018A788, 0x401904B4, 0x4018FC74, 0x40160B6C
 M_NM = 0x40160864
@@ -35,43 +36,81 @@ DSTATE, DMAGIC = dd.DSTATE, fx.DMAGIC
 DMIR, SMIR = 0x4233C3FD, 0x4233C3FE
 DMAX, B_DIG, B_VIB, B_CHO = 3, 1, 2, 3
 SPD_X = 64                                    # gespeichert: Speed XOR 64 (neues Pattern = 64)
-NAMES = {1: md.NAMES[0], 2: md.NAMES[3], 3: md.NAMES[2]}   # Digi, VIBDEL, CHODEL
-POP = {'delay': b"Delay", 'vib': b"VIBDEL", 'cho': b"CHODEL", 'speed': b"Speed"}
+# smp22 (Pip 04.11.): Anzeige 'ViDel' / 'ChDel' statt VIBDEL / CHODEL (kurz 'ViDl' / 'ChDl')
+NAMES = {1: md.NAMES[0],
+         2: (b"ViDel Send", b"ViDl", b"ViDel Time", b"TIME", b"ViDel Fdbk", b"FDBK"),
+         3: (b"ChDel Send", b"ChDl", b"ChDel Time", b"TIME", b"ChDel Fdbk", b"FDBK")}
+POP = {'delay': b"Delay", 'vib': b"ViDel", 'cho': b"ChDel", 'speed': b"Speed"}
 
 
 def build_ds(loop_at, tc):
     """Digital-Setup wie fx.build_ds ab 'dd' (ohne Moduspruefung, die macht MD), Zeit ueber TC."""
-    a = A(M_DS); w, l = a.w, a.l32
-    a.label('DD')
-    w(0x4FEF, 0xFFD4, 0x48D7, 0x7CFC)
-    w(0x206F, 0x0038)
-    w(0x7F68, 0x0002, 0xE087, 0x4A87); a.bcc(PL, 'p1'); w(0x7E00)
-    a.label('p1')
-    w(0x0C87); l(127); a.bcc(LE, 'p2'); w(0x7E7F)
-    a.label('p2')
-    w(0x203C); l(258); w(0x4C00, 0x7800)
-    w(0x2007, 0x4C07, 0x0800, 0xE080, 0xEE80)
-    w(0x4C07, 0x0800, 0xE080, 0xEE80)
-    w(0x2207, 0xDE87, 0xDE81, 0x9E80, 0xE287)
-    w(0x2A47)
-    w(0x7150); a.orig(fx.DTIME, 6); w(0x760A); a.orig(fx.DTIME + 10, 6)   # Zeit wie die Firmware (Befehle aus dem Image)
-    a.orig(fx.DTIME + 20, 6); w(0x4EB9); l(tc)
-    a.orig(fx.DTIME + 32, 14)
-    w(0x0C80); l(0x3FC00); a.bcc(LS, 'p3'); w(0x203C); l(0x3FC00)
-    a.label('p3')
-    w(0x0C80); l(32); a.bcc(CC, 'p4'); w(0x7020)
-    a.label('p4')
-    w(0x2840)
-    w(0x47F9); l(DSTATE)
-    w(0x202B, 0x0008, 0x0C80); l(DMAGIC); a.bcc(EQ, 'ok')
-    w(0x203C); l(DMAGIC); w(0x2740, 0x0008)
-    w(0x7000, 0x2680, 0x2740, 0x000C, 0x2740, 0x0010)
-    w(0x200C, 0x2740, 0x0004)
-    a.label('ok')
-    w(0x2613, 0x282B, 0x0004, 0x2C2B, 0x000C, 0x2C6B, 0x0010)
-    w(0x7A20, 0x226F, 0x0030, 0x206F, 0x0034)
-    w(0x45F9); l(fx.LINE); w(0x4EF9); l(loop_at)
-    code = a.done(); check_cf(code, M_DS)
+    a = A(M_DS)
+    asm(a, f'''
+    DD:     lea     -44(sp),sp
+            movem.l d2-d7/a2-a6,(sp)
+            movea.l 56(sp),a0                ; params
+            mvs.w   2(a0),d7
+            asr.l   #8,d7                    ; Feedback 0..127
+            tst.l   d7
+            bpl     p1
+            moveq   #0,d7
+    p1:     cmpi.l  #127,d7
+            ble     p2
+            moveq   #127,d7
+    p2:     move.l  #258,d0
+            muls.l  d0,d7
+            move.l  d7,d0
+            muls.l  d7,d0
+            asr.l   #8,d0
+            asr.l   #7,d0
+            muls.l  d7,d0
+            asr.l   #8,d0
+            asr.l   #7,d0
+            move.l  d7,d1
+            add.l   d7,d7
+            add.l   d1,d7
+            sub.l   d0,d7
+            asr.l   #1,d7                    ; (3f - f^3)/2
+            movea.l d7,a5                    ; Rueckkopplung
+    ; Zeit wie die Firmware (Befehle aus dem Image)
+            mvs.w   (a0),d0
+            orig    {fx.DTIME:#x},6
+            moveq   #10,d3
+            orig    {fx.DTIME + 10:#x},6
+            orig    {fx.DTIME + 20:#x},6
+            jsr     {tc:#x}
+            orig    {fx.DTIME + 32:#x},14
+            cmpi.l  #0x3fc00,d0
+            bls     p3
+            move.l  #0x3fc00,d0
+    p3:     cmpi.l  #32,d0
+            bcc     p4
+            moveq   #32,d0
+    p4:     movea.l d0,a4                    ; Verzoegerung in Samples
+            lea     {DSTATE:#x},a3
+            move.l  8(a3),d0
+            cmpi.l  #{DMAGIC:#x},d0
+            beq     ok
+            move.l  #{DMAGIC:#x},d0          ; Zustand erstmals leeren
+            move.l  d0,8(a3)
+            moveq   #0,d0
+            move.l  d0,(a3)
+            move.l  d0,12(a3)
+            move.l  d0,16(a3)
+            move.l  a4,d0
+            move.l  d0,4(a3)
+    ok:     move.l  (a3),d3
+            move.l  4(a3),d4
+            move.l  12(a3),d6
+            movea.l 16(a3),a6
+            moveq   #32,d5
+            movea.l 48(sp),a1                ; out
+            movea.l 52(sp),a0                ; in
+            lea     {fx.LINE:#x},a2
+            jmp     {loop_at:#x}
+    ''')
+    code = adone(a); check_cf(code, M_DS)
     return code, a.lab['DD']
 
 
@@ -89,47 +128,78 @@ def build_md(img, dd_at, ms_at):
     rd = lambda va: struct.unpack('>I', img[va - BASE:va - BASE + 4])[0]
     orig = [rd(C.DESC(26) + 0x2C), rd(C.DESC(26) + 0x34), rd(C.DESC(37) + 0x2C), rd(C.DESC(37) + 0x34),
             rd(C.DESC(38) + 0x2C), rd(C.DESC(38) + 0x34)]
-    a = A(M_MD); w, l = a.w, a.l32
-    # ---------------- MD: statt jsr Delay im Mixer
-    a.label('MD')
-    a.bcc(BSR, 'DSYNC')
-    w(0x7200, 0x1239); l(DMIR); a.bcc(NE, 'm1')
-    w(0x4EF9); l(STOCK)
-    a.label('m1')
-    w(0x0C81); l(B_DIG); a.bcc(NE, 'm2'); w(0x4EF9); l(dd_at)
-    a.label('m2'); w(0x4EF9); l(ms_at)
-    # ---------------- DSYNC: Pattern-Bytes -> DMIR/SMIR, Namen (veraendert d0, d1, a0, a1)
-    a.label('DSYNC')
-    w(0x7200, 0x2039); l(C.CUR_PAT); a.bcc(EQ, 'dz')
-    w(0x2040, 0x73A8, C.HDR + C.P_DFX)          # movea.l d0,a0 ; mvz.b HDR+53(a0),d1
-    w(0x0C81); l(DMAX); a.bcc(LS, 'd1'); w(0x7200)
-    a.label('d1')
-    w(0x71A8, C.HDR + C.P_DSPD)                 # mvz.b HDR+54(a0),d0
-    w(0x0A80); l(SPD_X); w(0x0C80); l(127); a.bcc(LS, 'd2')
-    a.label('dz'); w(0x7000 | SPD_X)
-    a.label('d2')
-    w(0x13C0); l(SMIR); w(0x13C1); l(DMIR)
-    w(0x2001, 0xE788, 0x2200, 0xD080, 0xD081)   # d0 = Typ * 24
-    w(0x43F9); l(0); fix_rows = len(a.b) - 4
-    w(0xD3C0)
-    w(0x41F9); l(C.DESC(26) + 0x2C); w(0x2099, 0x2159, 0x0008)
-    w(0x41F9); l(C.DESC(37) + 0x2C); w(0x2099, 0x2159, 0x0008)
-    w(0x41E8, 0x0038, 0x2099, 0x2159, 0x0008)
-    w(0x4E75)
-    # ---------------- W2: Schreib-DMA; eigene Typen in die obere Haelfte
-    a.label('W2')
-    w(0x7000, 0x1039); l(DMIR); a.bcc(EQ, 'wgo')
-    w(0x2039); l(0x8000B988); w(0x0080); l(0x40000); w(0x23C0); l(0x8000B988)
-    a.label('wgo'); w(0x4EF9); l(WRITE_DMA)
-    # ---------------- TC: Delay-Zeit (d0) wie am DSP-Befehl der Firmware; d1/a1 bleiben
-    a.label('TC')
-    w(0x4FEF, 0xFFF8, 0x48D7, 0x0202)           # lea -8(a7),a7 ; movem.l d1/a1,(a7)
-    w(0x43F9); l(DSP); w(0x73D1, 0x0C81); l(0x4EB9); a.bcc(NE, 'pl')   # lea DSP,a1 ; mvz.w (a1),d1 ; cmpi.l #jsr,d1
-    w(0x2269, 0x0002, 0x2217, 0x4E91); a.bcc(BRA, 'tx')                # movea.l 2(a1),a1 ; move.l (a7),d1 ; jsr (a1)
-    a.label('pl'); a.orig(DSP, 6)               # Befehl der Firmware am DSP-Haken (aus dem Image)
-    a.label('tx'); w(0x4CD7, 0x0202, 0x4FEF, 0x0008, 0x4E75)
-    code = bytearray(a.done()); check_cf(bytes(code), M_MD)
-    rows = M_NM; at = rows + 4 * 24; strs = b''; pool = {}; ptrs = []
+    rows = M_NM
+    a = A(M_MD)
+    asm(a, f'''
+    ; ---------------- MD: statt jsr Delay im Mixer
+    MD:     bsr     DSYNC
+            moveq   #0,d1
+            move.b  {DMIR:#x},d1
+            bne     m1
+            jmp     {STOCK:#x}               ; 0: Delay der Firmware
+    m1:     cmpi.l  #{B_DIG},d1
+            bne     m2
+            jmp     {dd_at:#x}               ; Digital
+    m2:     jmp     {ms_at:#x}               ; VIBDEL / CHODEL
+    ; ---------------- DSYNC: Pattern-Bytes -> DMIR/SMIR, Namen (veraendert d0, d1, a0, a1)
+    DSYNC:  moveq   #0,d1
+            move.l  {C.CUR_PAT:#x},d0
+            beq     dz
+            movea.l d0,a0
+            mvz.b   {C.HDR + C.P_DFX}(a0),d1 ; Typ
+            cmpi.l  #{DMAX},d1
+            bls     d1
+            moveq   #0,d1
+    d1:     mvz.b   {C.HDR + C.P_DSPD}(a0),d0   ; Speed ^ 64
+            eori.l  #{SPD_X},d0
+            cmpi.l  #127,d0
+            bls     d2
+    dz:     moveq   #{SPD_X},d0
+    d2:     move.b  d0,{SMIR:#x}
+            move.b  d1,{DMIR:#x}
+            move.l  d1,d0
+            lsl.l   #3,d0
+            move.l  d0,d1
+            add.l   d0,d0
+            add.l   d1,d0                    ; d0 = Typ * 24
+            lea     {rows:#x},a1
+            adda.l  d0,a1
+            lea     {C.DTD(26) + 0x2C:#x},a0 ; smp18: Kopie der Deskriptor-Tabelle (Core)
+            move.l  (a1)+,(a0)
+            move.l  (a1)+,8(a0)
+            lea     {C.DTD(37) + 0x2C:#x},a0
+            move.l  (a1)+,(a0)
+            move.l  (a1)+,8(a0)
+            lea     56(a0),a0
+            move.l  (a1)+,(a0)
+            move.l  (a1)+,8(a0)
+            rts
+    ; ---------------- W2: Schreib-DMA; eigene Typen in die obere Haelfte
+    W2:     moveq   #0,d0
+            move.b  {DMIR:#x},d0
+            beq     wgo
+            move.l  0x8000b988,d0
+            ori.l   #0x40000,d0
+            move.l  d0,0x8000b988
+    wgo:    jmp     {WRITE_DMA:#x}
+    ; ---------------- TC: Delay-Zeit (d0) wie am DSP-Befehl der Firmware; d1/a1 bleiben
+    TC:     lea     -8(sp),sp
+            movem.l d1/a1,(sp)
+            lea     {DSP:#x},a1
+            mvz.w   (a1),d1
+            cmpi.l  #0x4eb9,d1               ; dort ein jsr (delay-notes)?
+            bne     pl
+            movea.l 2(a1),a1
+            move.l  (sp),d1
+            jsr     (a1)                     ; dann dessen Funktion
+            bra     tx
+    pl:     orig    {DSP:#x},6               ; sonst der Befehl der Firmware (aus dem Image)
+    tx:     movem.l (sp),d1/a1
+            lea     8(sp),sp
+            rts
+    ''')
+    code = adone(a); check_cf(code, M_MD)
+    at = rows + 4 * 24; strs = b''; pool = {}; ptrs = []
     def put(s):
         nonlocal strs
         if s not in pool: pool[s] = at + len(strs); strs += s + b'\0'
@@ -137,55 +207,84 @@ def build_md(img, dd_at, ms_at):
     for t in range(DMAX + 1):
         ptrs += orig if t == 0 else [put(x) for x in NAMES[t]]
     nm = struct.pack('>24I', *ptrs) + strs
-    code[fix_rows:fix_rows + 4] = struct.pack('>I', rows)
-    return bytes(code), nm, dict(a.lab, ROWS=rows)
+    return code, nm, dict(a.lab, ROWS=rows)
 
 
 def build_h(dsync):
     cs = core.sym()
-    a = A(M_H); w, l = a.w, a.l32
-    fix = {}
-    def lea(key, reg):                         # lea TEXT,a0 / a1
-        w(0x41F9 | (reg << 9)); l(0); fix.setdefault(key, []).append(len(a.b) - 4)
-    a.label('DFXH')
-    w(0x202A, 0x0004, 0x0C80); l(C.ENC_DTIME); a.bcc(NE, 'sp')
-    # TRACK + Delay Time -> Effektwahl
-    w(0x4878, C.KEY_TRACK, 0x4EB9); l(C.HELD); w(0x588F, 0x4A80); a.bcc(EQ, 'no')
-    w(0x2039); l(C.CUR_PAT); a.bcc(EQ, 'no')
-    w(0x2040, 0x41E8, C.HDR + C.P_DFX, 0x7200 | DMAX)
-    w(0x43F9); l(dsync); w(0x4EF9); l(cs['MODESW'])
-    # SETTINGS + DELAY SEND -> Speed
-    a.label('sp')
-    w(0x0C80); l(C.ENC_DSEND); a.bcc(NE, 'no')
-    w(0x712A, 0x0008); a.bcc(EQ, 'no')
-    w(0x4878, C.KEY_SET, 0x4EB9); l(C.HELD); w(0x588F, 0x4A80); a.bcc(EQ, 'no')
-    w(0x7000 | C.KEY_SET, 0x4EB9); l(cs['GEST'])
-    w(0x2039); l(C.CUR_PAT); a.bcc(EQ, 'sk')
-    w(0x2040, 0x41E8, C.HDR + C.P_DSPD)         # a0 = &Speed-Byte
-    w(0x7190, 0x0A80); l(SPD_X); w(0x0C80); l(127); a.bcc(LS, 's0'); w(0x7000 | SPD_X)
-    a.label('s0')
-    w(0x732A, 0x0008, 0xD081); a.bcc(PL, 's1'); w(0x7000)
-    a.label('s1')
-    w(0x0C80); l(127); a.bcc(LE, 's2'); w(0x707F)
-    a.label('s2')
-    w(0x2200, 0x0A80); l(SPD_X); w(0x1080)      # d1 = Speed ; Byte = Speed ^ 64
-    w(0x71A8, 0xFFFF)                           # mvz.b -1(a0),d0   Typ
-    lea('delay', 1)
-    w(0x0C80); l(B_VIB); a.bcc(NE, 't3'); lea('vib', 1); a.bcc(BRA, 't4')
-    a.label('t3')
-    w(0x0C80); l(B_CHO); a.bcc(NE, 't4'); lea('cho', 1)
-    a.label('t4')
-    w(0x2049); lea('speed', 1)                  # movea.l a1,a0 ; lea 'Speed',a1
-    w(0x7000 | C.OV_NUM, 0x4EB9); l(cs['OVS'])
-    a.label('sk'); w(0x7001, 0x4E75)
-    a.label('no'); w(0x7000, 0x4E75)
-    code = bytearray(a.done()); check_cf(bytes(code), M_H)
-    at = {}
-    for k, s in POP.items():
-        at[k] = M_H + len(code); code += s + b'\0'
-    for k, offs in fix.items():
-        for o in offs: code[o:o + 4] = struct.pack('>I', at[k])
-    return bytes(code), dict(a.lab)
+    text = f'''
+    DFXH:   move.l  4(a2),d0
+            cmpi.l  #{C.ENC_DTIME},d0
+            bne     sp
+    ; TRACK + Delay Time -> Effektwahl
+            pea     {C.KEY_TRACK}.w
+            jsr     {C.HELD:#x}
+            addq.l  #4,sp
+            tst.l   d0
+            beq     no
+            move.l  {C.CUR_PAT:#x},d0
+            beq     no
+            movea.l d0,a0
+            lea     {C.HDR + C.P_DFX}(a0),a0
+            moveq   #{DMAX},d1
+            lea     {dsync:#x},a1
+            jmp     {cs['MODESW']:#x}
+    ; FUNC + DELAY SEND -> Speed (smp39, Pip 11.11.; vorher SETTINGS + DELAY SEND)
+    sp:     cmpi.l  #{C.ENC_DSEND},d0
+            bne     no
+            mvs.b   8(a2),d0                 ; Drehung
+            beq     no
+            pea     {C.KEY_FUNC}.w
+            jsr     {C.HELD:#x}
+            addq.l  #4,sp
+            tst.l   d0
+            beq     no
+            moveq   #{C.KEY_FUNC},d0
+            jsr     {cs['GEST']:#x}
+            move.l  {C.CUR_PAT:#x},d0
+            beq     sk
+            movea.l d0,a0
+            lea     {C.HDR + C.P_DSPD}(a0),a0   ; a0 = &Speed-Byte
+            mvz.b   (a0),d0
+            eori.l  #{SPD_X},d0
+            cmpi.l  #127,d0
+            bls     s0
+            moveq   #{SPD_X},d0
+    s0:     mvs.b   8(a2),d1
+            add.l   d1,d0
+            bpl     s1
+            moveq   #0,d0
+    s1:     cmpi.l  #127,d0
+            ble     s2
+            moveq   #127,d0
+    s2:     move.l  d0,d1                    ; d1 = Speed
+            eori.l  #{SPD_X},d0
+            move.b  d0,(a0)                  ; Byte = Speed ^ 64
+            mvz.b   -1(a0),d0                ; Typ
+            lea     T_DELAY,a1
+            cmpi.l  #{B_VIB},d0
+            bne     t3
+            lea     T_VIB,a1
+            bra     t4
+    t3:     cmpi.l  #{B_CHO},d0
+            bne     t4
+            lea     T_CHO,a1
+    t4:     movea.l a1,a0
+            lea     T_SPEED,a1               ; Popup: Typ / 'Speed' = Wert
+            moveq   #{C.OV_NUM},d0
+            jsr     {cs['OVS']:#x}
+    sk:     moveq   #1,d0
+            rts
+    no:     moveq   #0,d0
+            rts
+'''
+    def tail(end):
+        b = bytearray(); at = {}
+        for k, s in POP.items():
+            at['T_' + k.upper()] = end + len(b); b += s + b'\0'
+        return bytes(b), at
+    code, lab = asm2(M_H, text, tail)
+    return code, {k: v for k, v in lab.items() if not k.startswith('T_')}
 
 
 def build(img):
@@ -214,7 +313,7 @@ def tweak(img):
     W.hook(W_HOOK, jsr(WRITE_DMA), jsr(lab['W2']))
     core.slot_write(W, 'delay-fx', lab['DFXH'])
     return patch('delay-fx', 6, 'Delay FX: Digital delay, VIBDEL, CHODEL',
-                 ["TRACK + Delay Time: Delay -> Digital -> VIBDEL -> CHODEL; SETTINGS + DELAY SEND = modulation speed.",
+                 ["TRACK + Delay Time: Delay -> Digital -> VIBDEL -> CHODEL; FUNC + DELAY SEND = modulation speed.",
                   "Stored per pattern (header bytes 53, 54). Erzeugt von v2/g2_delayfx.py."], W, requires=['core'],
                  hooks=[f"{D_HOOK:#x}", f"{W_HOOK:#x}"],
                  memory=[{"va": f"{DSTATE:#x}", "size": 20, "ram": True, "use": "digital delay state"},

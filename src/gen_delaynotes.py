@@ -25,45 +25,58 @@ LABELS = {127: "1/1", 63: "1/2", 31: "1/4", 15: "1/8", 7: "/16", 3: "/32", 1: "/
 TRIPLET_FIX = {4: 85, 9: 171, 20: 85, 41: 171, 84: 85}     # Anzeige = Wert+1 : +1/3 bzw +2/3 Schritt (in 1/256)
 
 def build_d():
+    """D: statt 'addi.l #$100,d0' am DSP-Befehl: Triolen-Werte exakt (TRIPLET_FIX), sonst unveraendert"""
+    from cfasm import asm, done as adone
     a = A(MD)
-    a.orig(DSP, 6)                                 # ersetzter Befehl (aus dem Image)
-    a.w(0x2F02, 0x2400, 0x0282); a.l32(0xFF)       # move.l d2,-(a7) ; move.l d0,d2 ; andi.l #$ff,d2
-    a.bcc(BNE, 'done')                             # Nachkommastellen -> unveraendert
-    a.w(0x2400, 0xE08A)                            # move.l d0,d2 ; lsr.l #8,d2  (= Wert+1)
-    for disp1, add in sorted((v + 1, x) for v, x in TRIPLET_FIX.items()):
-        a.w(0x0C82); a.l32(disp1)                  # cmpi.l #disp1,d2
-        a.bcc(BNE, f'n{disp1}')
-        a.w(0x0680); a.l32(add)                    # addi.l #add,d0
-        a.bcc(0x0, 'done')                         # bra done
-        a.label(f'n{disp1}')
-    a.label('done')
-    a.w(0x241F, 0x4E75)                            # move.l (a7)+,d2 ; rts
-    code = a.done(); assert len(code) <= 280, len(code); return code
+    tests = ''.join(f'''
+            cmpi.l  #{disp1},d2
+            bne     n{disp1}
+            addi.l  #{add},d0
+            bra     done
+    n{disp1}:''' for disp1, add in sorted((v + 1, x) for v, x in TRIPLET_FIX.items()))
+    asm(a, f'''
+            orig    {DSP:#x},6               ; ersetzter Befehl (aus dem Image)
+            move.l  d2,-(sp)
+            move.l  d0,d2
+            andi.l  #0xff,d2
+            bne     done                     ; Nachkommastellen -> unveraendert
+            move.l  d0,d2
+            lsr.l   #8,d2                    ; = Wert + 1{tests}
+    done:   move.l  (sp)+,d2
+            rts
+    ''')
+    code = adone(a); assert len(code) <= 280, len(code); return code
 
 def build_f():
+    """F: Anzeige-Thunk 0x4004dfda, nur fuer Objekt 37 (Delay Time): Notenwerte als Text (Tabelle hinter dem Code)"""
+    from cfasm import asm, done as adone
     a = A(MF)
-    a.w(0x202F, 0x0004, 0x0C80); a.l32(THIS37)     # move.l 4(a7),d0 ; cmpi.l #THIS37,d0   (nur Objekt 37)
-    a.bcc(BNE, 'orig')
-    a.w(0x202F, 0x0008, 0xE080)                    # move.l 8(a7),d0 ; asr.l #8,d0
-    a.w(0x41F9); a.l32(0)                          # lea TABLE,a0   (Adresse wird unten eingesetzt)
-    fix = len(a.b) - 4
-    a.w(0x7200 | len(LABELS))                      # moveq #N,d1
-    a.label('loop')
-    a.w(0xB0A8, 0x0004)                            # cmp.l 4(a0),d0
-    a.bcc(BEQ, 'found')
-    a.w(0x41E8, 0x0008, 0x5381)                    # lea 8(a0),a0 ; subq.l #1,d1
-    a.bcc(BNE, 'loop')
-    a.label('orig')
-    a.orig(THUNK, 6); a.w(0x4EF9); a.l32(THUNK + 6)             # Originalbefehl (aus dem Image), weiter im Thunk
-    a.label('found')
-    a.w(0x222F, 0x000C, 0x2F48, 0x000C, 0x2F41, 0x0004)          # d1=buf ; 12(a7)=Etikett ; 4(a7)=buf
-    a.w(0x203C); a.l32(FMT_S); a.w(0x2F40, 0x0008)  # d0 = "%s" ; 8(a7) = d0
-    a.w(0x4EF9); a.l32(SPRINTF)
-    table = MF + len(a.b)
-    a.b[fix:fix + 4] = struct.pack('>I', table)
-    for v, s in sorted(LABELS.items()):
-        a.b += s.encode().ljust(4, b'\0') + struct.pack('>I', v)
-    code = a.done(); assert len(code) <= 280, len(code); return code
+    asm(a, f'''
+            move.l  4(sp),d0
+            cmpi.l  #{THIS37:#x},d0          ; nur Objekt 37
+            bne     orig
+            move.l  8(sp),d0
+            asr.l   #8,d0                    ; Wert
+            lea     TABLE,a0
+            moveq   #{len(LABELS)},d1
+    loop:   cmp.l   4(a0),d0
+            beq     found
+            lea     8(a0),a0
+            subq.l  #1,d1
+            bne     loop
+    orig:   orig    {THUNK:#x},6             ; Originalbefehl (aus dem Image), weiter im Thunk
+            jmp     {THUNK + 6:#x}
+    found:  move.l  12(sp),d1                ; Puffer
+            move.l  a0,12(sp)                ; Etikett
+            move.l  d1,4(sp)
+            move.l  #{FMT_S:#x},d0           ; "%s"
+            move.l  d0,8(sp)
+            jmp     {SPRINTF:#x}
+    TABLE:  ; je Eintrag: Etikett (4 B) + Wert
+    ''' + ''.join(f'''
+            dc.b    {", ".join(str(c) for c in s.encode().ljust(4, bytes(1)))}
+            dc.l    {v}''' for v, s in sorted(LABELS.items())))
+    code = adone(a); assert len(code) <= 280, len(code); return code
 
 def tweak(stock):
     cd, cf = build_d(), build_f()

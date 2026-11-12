@@ -1,29 +1,31 @@
 {
  "os": "Model:Cycles OS 1.13",
- "version": "2.2.0",
+ "version": "2.3.0",
  "patches": [
   "00-core.json",
   "01-mute-solo.json",
-  "02-live-mute.json",
-  "03-hold-mute.json",
-  "04-delay-notes.json",
-  "05-reverb-fx.json",
-  "06-delay-fx.json",
-  "07-strum.json",
-  "08-load-meter.json",
-  "09-groove.json",
-  "10-control-mode.json",
-  "11-trig-select.json",
-  "12-fill2.json",
-  "13-track-filter.json",
-  "14-lfo-amount.json",
-  "15-direct-jump.json"
+  "02-hold-mute.json",
+  "03-delay-notes.json",
+  "04-reverb-fx.json",
+  "05-delay-fx.json",
+  "06-strum.json",
+  "07-load-meter.json",
+  "08-groove.json",
+  "09-control-mode.json",
+  "10-trig-select.json",
+  "11-fill2.json",
+  "12-track-filter.json",
+  "13-lfo-amount.json",
+  "14-direct-jump.json",
+  "15-sampler.json",
+  "16-strings.json",
+  "17-mono.json",
+  "18-param-undo.json",
+  "19-pad-mode.json"
  ],
  "full_set": [
-  "latching-mute",
   "core",
   "mute-solo",
-  "live-mute",
   "hold-mute",
   "delay-notes",
   "reverb-fx",
@@ -36,7 +38,12 @@
   "fill2",
   "track-filter",
   "lfo-amount",
-  "direct-jump"
+  "direct-jump",
+  "sampler",
+  "strings",
+  "mono",
+  "param-undo",
+  "pad-mode"
  ],
  "official_syx_sha256": {
   "model-cycles_OS1.13.syx": "44fe586269631a0ca7da25a3383fc6733c314809505fc3cc52f1e0ed9800640c"
@@ -46,13 +53,15 @@
    "name": "official Model:Cycles OS 1.13",
    "target": "cycles",
    "section3_sha256": "cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98",
-   "full_set_result_sha256": "af8244f16c2f416fe503567c7de6c20a33e2849bafddb9ad09b94efe915ced38"
+   "full_set_result_sha256": "7800cba3817362b4f57a38ab9e8236f8a9611b58a8945d145b1d07877413dc59",
+   "result_size": 1809728
   },
   {
    "name": "Model:Cycles OS 1.13 for Model:Samples (Modded-Cycles crossflash.py --to samples)",
    "target": "samples",
    "section3_sha256": "b6fbc48f7d7d07cecae3859e07270fa2298f393e8afa2643144bdb4efc317aad",
-   "full_set_result_sha256": "a2086b329ea9ebac2587a2a2413004928583a24804d4f0f37a74688c188417e4"
+   "full_set_result_sha256": "8430f5aac6cd473cc56f6dce95a1d8824a8eccb6581cd0bd2de5d7b4e8631c05",
+   "result_size": 1809728
   }
  ]
 }

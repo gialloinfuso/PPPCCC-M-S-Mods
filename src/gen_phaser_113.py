@@ -30,37 +30,63 @@ EQ, PL = 0x7, 0xA
 
 def build_ps_split(pass_at, coef_at):
     """fx.build_ps, aufgeteilt: A bis einschliesslich aR, dann jmp B; B = beide Kanal-Durchlaeufe + Epilog."""
-    a = A(M_PSA); w, l = a.w, a.l32
-    a.label('PH')
-    w(0x4FEF, 0xFFD4, 0x48D7, 0x7CFC)
-    w(0x206F, 0x0038)
-    w(0x71D0, 0xE088, 0x73E8, 0x0002, 0xE089)
-    w(0x2400, 0x4C00, 0x2800, 0x7621, 0x4C03, 0x2800)
-    w(0x0682); l(8948); w(0xEB8A)
-    w(0x263C); l(193); w(0x4C03, 0x1800, 0x2441)
-    w(0x47F9); l(PSTATE)
-    w(0x202B, 0x0004, 0x0C80); l(fx.PMAGIC); a.bcc(EQ, 'ok')
-    w(0x204B, 0x700B)
-    a.label('cl'); w(0x4298, 0x5380); a.bcc(PL, 'cl')
-    w(0x203C); l(fx.PMAGIC); w(0x2740, 0x0004)
-    a.label('ok')
-    w(0x2013, 0xD082, 0x2680)
-    w(0x4EB9); l(coef_at); w(0x2747, 0x0030)
-    w(0x2013, 0x0680); l(0x80000000)
-    w(0x4EB9); l(coef_at); w(0x2747, 0x0034)
-    w(0x4EF9); l(M_PSB)                     # jmp Teil B
-    ca = a.done(); check_cf(ca, M_PSA)
-    b = A(M_PSB); w, l = b.w, b.l32
-    for c, so, sa in ((0, 8, 0x30), (4, 28, 0x34)):
-        w(0x206F, 0x0034, 0x226F, 0x0030)
-        if c: w(0x5889)
-        w(0x49E8, 0x0100)
-        w(0x2E2B, sa)
-        w(0x4CEB, 0x007C, so)
-        w(0x4EB9); l(pass_at)
-        w(0x48EB, 0x007C, so)
-    w(0x4CD7, 0x7CFC, 0x4FEF, 0x002C, 0x4E75)
-    cb = b.done(); check_cf(cb, M_PSB)
+    from cfasm import asm, done as adone
+    a = A(M_PSA)
+    asm(a, f'''
+    PH:     lea     -44(sp),sp
+            movem.l d2-d7/a2-a6,(sp)
+            movea.l 56(sp),a0                ; params
+            mvz.w   (a0),d0
+            lsr.l   #8,d0                    ; Speed
+            mvz.w   2(a0),d1
+            lsr.l   #8,d1                    ; Color
+            move.l  d0,d2
+            muls.l  d0,d2
+            moveq   #33,d3
+            muls.l  d3,d2
+            addi.l  #8948,d2
+            lsl.l   #5,d2                    ; LFO-Schritt
+            move.l  #193,d3
+            muls.l  d3,d1
+            movea.l d1,a2                    ; Rueckkopplung (Q15)
+            lea     {PSTATE:#x},a3
+            move.l  4(a3),d0
+            cmpi.l  #{fx.PMAGIC:#x},d0
+            beq     ok
+            movea.l a3,a0                    ; Zustand erstmals leeren
+            moveq   #11,d0
+    cl:     clr.l   (a0)+
+            subq.l  #1,d0
+            bpl     cl
+            move.l  #{fx.PMAGIC:#x},d0
+            move.l  d0,4(a3)
+    ok:     move.l  (a3),d0
+            add.l   d2,d0
+            move.l  d0,(a3)                  ; LFO-Phase
+            jsr     {coef_at:#x}
+            move.l  d7,48(a3)                ; aL
+            move.l  (a3),d0
+            addi.l  #0x80000000,d0
+            jsr     {coef_at:#x}
+            move.l  d7,52(a3)                ; aR
+            jmp     {M_PSB:#x}               ; Teil B
+    ''')
+    ca = adone(a); check_cf(ca, M_PSA)
+    b = A(M_PSB)
+    asm(b, ''.join(f'''
+            movea.l 52(sp),a0                ; in
+            movea.l 48(sp),a1                ; out{"""
+            addq.l  #4,a1                    ; rechter Kanal""" if c else ""}
+            lea     256(a0),a4               ; Ende (32 Frames)
+            move.l  {sa}(a3),d7
+            movem.l {so}(a3),d2-d6
+            jsr     {pass_at:#x}
+            movem.l d2-d6,{so}(a3)''' for c, so, sa in ((0, 8, 0x30), (4, 28, 0x34))) + '''
+            movem.l (sp),d2-d7/a2-a6
+            lea     44(sp),sp
+            rts
+    ''')
+    cb = adone(b); check_cf(cb, M_PSB)
     return ca, cb, a.lab['PH']
 
 

@@ -1,5 +1,67 @@
 # Changelog
 
+## v2.3.0 (2026-11-12)
+
+The final release. After 2.3 there will be no new features, only bug fixes as far as my time allows.
+
+### New patch numbers
+
+Live mute is now part of 01, so every later patch moved down by one; there are five new patches at the end.
+
+| v2.3.0 | v2.2.0 |
+|---|---|
+| 00 core | 00 core |
+| 01 mute-solo (latching mute + solo + live mute) | 01 mute-solo + 02 live-mute |
+| 02 hold-mute … 14 direct-jump | 03 … 15 |
+| 15 sampler (Grit), 16 strings (Vlvt), 17 mono (Monom), 18 param-undo, 19 pad-mode | new |
+
+### New
+
+- **15 Grit:** a 7th machine, a sampler in the style of the Model:Samples with six models (CLEAN, SP, LM, MIRAGE, TX16W, MPC60). Samples from
+  the +Drive, chosen in the browser; start, length, loop, reverse; waveform while turning; sample locks lock only the
+  sample; samples can be uploaded with Elektron Transfer (Device Config > Transfer: SMP).
+- **16 Vlvt:** an 8th machine, a Solina-style string ensemble (chords like CHORD, 8' / 4' mix, tone, ensemble).
+- **17 Monom:** a 9th machine, a warm, imperfect monophonic synth (8 waves, sub, drive, glide, noise).
+- **18 Parameter undo:** the "old → new" popup (BACK = undo) stays three times as long.
+- **19 Pad mode:** pad tracks are not played by the sequencer; the trig keys and MIDI notes 36–51 play their steps.
+  TRACK + RETRIG (+ trig 1–6).
+
+### Updated
+
+- **00 Core:** amp attack on FUNC + DECAY for every machine; TRACK + T1–T6 selects the track (T1–T6 alone no longer do);
+  FUNC + knob moves in fine steps; a 64 KB payload area appended to the MAIN OS; the parameter descriptor table
+  extended to 96 entries. The core now also includes the multi-line browser, the scrolling names, volume and
+  pan as numbers, and RETRIG for the save menu in the browser (RT=MENU).
+- **01 Mute:** latching mute, solo and live mute are one patch.
+- **04 Reverb FX:** three new reverbs, Hall, Room and Plate.
+- **05 Delay FX:** modulation speed on **FUNC** + DELAY SEND (was SETTINGS + DELAY SEND).
+- **06 Strum:** per track and saved with the sound, on CHORD and Vlvt tracks: FUNC + SHAPE = time (OFF, 2–250 ms, note
+  values), FUNC + COLOR = pattern (UP, DOWN, RND, 1324, 1423, 4132, 4231, ROOT, TOP). Every chord note has its own
+  envelope. Replaces the per-pattern strum on SETTINGS + SHAPE.
+- **07 Load meter:** on / off with **RETRIG + BPM** (was SETTINGS + REVERB SEND).
+- **08 Groove:** a new set of grooves: Boom Bap, Disco, Dancehall 1 / 2, Hip Hop, Jazz Rock, Perc 1–3, Soca.
+- **09 Control All:** choose the tracks CONTROL ALL affects (hold TRACK, trig 1–6).
+- **11 Fill 2 & Trig Conditions:** new conditions PTC / !PTC, LST / !LST, x:12, x:16 and a reordered list.
+- **12 Track filter:** GATE + PLAY resets the filter of the selected track; GATE toggles on release.
+- **14 Direct Pattern Jump:** the pattern selection latches (only PATTERN closes it); copy / paste / clear of a pattern
+  keeps it open.
+
+Unchanged: 02 hold-mute, 03 delay-notes, 10 trig-select, 13 lfo-amount.
+
+### Tools and sources
+
+- The generators are now readable ColdFire assembler text in Python (`src/v2/cfasm.py`), byte-identical to before.
+- **No outside repositories needed to build.** The latching mute (01) and the scrolling names (core) are rebuilt here
+  with the same behaviour as drumkilla's tweaks (own code; the tests compare both). The container code is included
+  unchanged in `tools/vendor/` (drumkilla's `mtlib`, Modded-Cycles' `aplib_grow.py` and `crossflash.py`, MIT).
+  `tools/build.py` needs only Python 3 and your firmware file; `--tweaks` is gone.
+- **Flasher:** build and flash in the browser (`flasher/`, on the project page). It checks your official file, resolves
+  the requirements of the chosen patches, builds the same files as `tools/build.py` byte for byte, and can send them
+  over Web MIDI. Pure JavaScript, nothing is uploaded; `tests/check_flasher.mjs` compares it with `tools/build.py`.
+- The MAIN OS grows by the core's payload area (64 KB).
+- Patterns and sounds from v2.2.0 or the stock OS load as before. **Strum settings of v2.2 patterns are not carried
+  over** (strum is now per sound).
+
 ## v2.2.0 (2026-10-30)
 
 New features:

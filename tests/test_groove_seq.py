@@ -4,7 +4,7 @@
 import json, struct, sys, pathlib
 R = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(R / 'uni/bindings/python')); sys.path.insert(0, str(R / 'Modded-Cycles/tools/emu')); sys.path.insert(0, str(R / 'solo'))
-sys.path.insert(0, str(R / 'v2/tests'))
+sys.path.insert(0, str(R / 'v2/tests')); sys.path.insert(0, str(R / 'v2'))
 from unicorn import UC_HOOK_CODE
 from unicorn import m68k_const as mk
 import mcengine, seqrig
@@ -12,7 +12,7 @@ import rig
 mcengine._emac_instrs = lambda img, ranges: {}
 BASE = 0x40000400
 stock = rig.STOCK
-img = rig.v2_image(latch=False)
+img = rig.v2_image([i for i in rig.V2_IDS if i != 'pad-mode'], latch=False)   # seqrig ohne Nutzlast-RAM: SQS (pad-mode) liegt dort
 P_ = {'hsh': 7}
 RND, HDR, HOFF = rig.V2SYM['groove']['RND'], 0x77B2, 40
 GOFF = HDR + 55
@@ -45,10 +45,11 @@ for t in (0, 3, 5):
                         same &= ev(e0, r0, t, step, word, sw, patsw, 90, micro) == ev(e1, r1, t, step, word, sw, patsw, 90, micro, 0, [0] * 6)
 chk('Groove Swing, Humanize 0: identisch mit dem Original (Tracks, Steps, Swing, Pattern-Swing, Micro-Timing)', same)
 # ---- 2. Tabellen-Grooves (1..3), Humanize 0
-import gen_groove_113 as gg
+import groovetab
+import g2_groove as gg2
 import os; os.chdir(R)
-for gm, f in enumerate(gg.GROOVES, 1):
-    g = gg.table(f)[1]; good = True
+for gm, f in enumerate(gg2.GROOVES, 1):
+    g = groovetab.parse(f); good = True
     for st in range(64):
         for sw in (0, 15, 30):
             for v0 in (127, 100, 40, 1):
@@ -58,8 +59,8 @@ for gm, f in enumerate(gg.GROOVES, 1):
                     k = (127 - g['vel'][st]) * sw; v = max(1, v0 - ((v0 * k * 165) >> 20))
                     good &= got == (ou * 1500 + micro * 225000, v)
     chk('%s (Groove %d, %d Steps): Zeit und Velocity wie Referenz (64 Steps, Swing 0/15/30)' % (g['name'], gm, g['steps']), good)
-x = [ev(e1, r1, 0, st, 0x81, 30, -1, 100, 0, 8, [0] * 6) for st in range(4)]
-chk('ungueltiger Groove 8: wie Swing 0 ohne Wirkung auf geraden Steps', all(b_ == 100 for a_, b_ in x))
+x = [ev(e1, r1, 0, st, 0x81, 30, -1, 100, 0, gg2.GMAX + 1, [0] * 6) for st in range(4)]
+chk('ungueltiger Groove %d:' % (gg2.GMAX + 1) + ' wie Swing 0 ohne Wirkung auf geraden Steps', all(b_ == 100 for a_, b_ in x))
 # ---- 3. Humanize pro Track
 def hum_ref(rnd, ht, hv, v0, base_t=0):
     st, sv = (ht * 77) >> P_['hsh'], (hv * 77) >> P_['hsh']
@@ -86,7 +87,7 @@ chk('nur Zeit: Velocity unveraendert; nur Velocity: Zeit unveraendert',
 got = ev(e1, r1, 1, 5, 0x81, 0, -1, 100, 0, 0, [0, 0, 80, 0, 0, 0], [0, 0, 80, 0, 0, 0])
 chk('Humanize nur auf Track 3: Track 2 unveraendert', got == (0, 100))
 # Groove + Humanize zusammen
-g = gg.table('Boom Bap')[1]; r1.w32(RND, 0x7654321); rnd = 0x7654321; good = True
+g = groovetab.parse('Boom Bap'); r1.w32(RND, 0x7654321); rnd = 0x7654321; good = True
 for st in range(32):
     got = ev(e1, r1, 4, st, 0x91, 30, -1, 100, 0, 1, [0, 0, 0, 0, 60, 0], [0, 0, 0, 0, 40, 0])
     ou = (g['off'][st] * 30 * 6 * 5) >> 6; k = (127 - g['vel'][st]) * 30; v1 = max(1, 100 - ((100 * k * 165) >> 20))

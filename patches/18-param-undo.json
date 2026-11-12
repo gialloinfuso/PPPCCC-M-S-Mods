@@ -1,0 +1,51 @@
+{
+ "id": "param-undo",
+ "order": 18,
+ "name": "Parameter undo: 3x longer",
+ "description": [
+  "The value popup after turning a knob (old -> new, BACK = undo) stays three times as long (180 instead of 60 ticks),",
+  "so BACK can undo the change for longer."
+ ],
+ "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
+ "os": "1.13",
+ "section": 3,
+ "hooks": [
+  "0x4001f760"
+ ],
+ "memory": [
+  {
+   "va": "0x40178888",
+   "size": 124
+  }
+ ],
+ "symbols": {
+  "PUT": "0x40178888"
+ },
+ "params": {
+  "ticks": 180,
+  "firmware_ticks": 60
+ },
+ "writes": [
+  {
+   "off": 127840,
+   "va": "0x4001f760",
+   "len": 6,
+   "old_sha256": "da5d72dc1fc9ef5ba10d40135404e55a421a7c22053edbb0b475310257e46773",
+   "new": "4eb940178888"
+  },
+  {
+   "off": 717814,
+   "va": "0x400af7f6",
+   "len": 4,
+   "old_sha256": "8cfb8b011c81267b0cc89f589a0f4c33402a7faf287dbeb99383f767b3516196",
+   "new": "4016e980"
+  },
+  {
+   "off": 1541256,
+   "va": "0x40178888",
+   "len": 12,
+   "old_sha256": "f9b9bb89b0bd2bdb6e61492b618819156c74ce14fa89b00e765f384c751a26ab",
+   "new": "203c000000b4254002384e75"
+  }
+ ]
+}

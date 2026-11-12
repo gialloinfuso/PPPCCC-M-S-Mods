@@ -1,36 +1,123 @@
 {
  "id": "mute-solo",
  "order": 1,
- "name": "Solo in latching mute mode",
+ "name": "Mute: latching, solo and live notes",
  "description": [
-  "In latching mute mode: hold FUNC + track key = solo that track; the same again = back to the previous mutes.",
-  "Requires drumkilla's latching-mute (elektron-model-tweaks, MIT), applied first."
+  "Hold TRACK + tap FUNC: the mute mode latches (FUNC lights up); a short tap on FUNC alone leaves it.",
+  "In the latched mute mode: FUNC + track key = solo that track; the same again = the previous mutes come back.",
+  "Muted tracks also mute live notes (pads and incoming MIDI).",
+  "Latching mute: behaviour and idea from drumkilla's latching-mute tweak (elektron-model-tweaks, MIT); own code."
  ],
  "device": "Model:Cycles OS 1.13 (also a Model:Samples running it)",
  "os": "1.13",
  "section": 3,
- "requires": [
-  "latching-mute"
- ],
  "conflicts": [
   "model-tg",
   "model-tg-st"
  ],
- "symbols": {
-  "solo_entry": "0x40167c50",
-  "saved": "0x40167d58",
-  "solo_flag": "0x40167d5e"
- },
  "hooks": [
-  "0x40023550"
+  "0x40100c44",
+  "0x4002351a",
+  "0x400233a0"
  ],
  "memory": [
   {
-   "va": "0x40167c50",
-   "size": 280
+   "va": "0x40148662",
+   "size": 288,
+   "use": "code (unused 0xff area)"
+  },
+  {
+   "va": "0x40148328",
+   "size": 114,
+   "use": "code (unused 0xff area)"
+  },
+  {
+   "va": "0x401487e0",
+   "size": 14,
+   "ram": true,
+   "use": "FUNC press time, FUNC used, latched flag"
   }
  ],
+ "symbols": {
+  "solo_entry": "0x40167c50",
+  "saved": "0x40167d58",
+  "solo_flag": "0x40167d5e",
+  "latch_LKH": "0x40148662",
+  "latch_KEEP": "0x401486fc",
+  "latch_LLED": "0x4014874c",
+  "latch_LTK": "0x40148328",
+  "latch_T0": "0x401487e0",
+  "latch_USED": "0x401487ec",
+  "latch_flag": "0x401487ed"
+ },
  "writes": [
+  {
+   "off": 143264,
+   "va": "0x400233a0",
+   "len": 6,
+   "old_sha256": "a8daba117e6cfe9d4daf86594645b03e2dca0360ba0399d9d8c9401324082da2",
+   "new": "4ef94014874c"
+  },
+  {
+   "off": 143642,
+   "va": "0x4002351a",
+   "len": 8,
+   "old_sha256": "4acd7c9697a37a9cff865c775a2c084a98eb2638bb2f864c9a776fa1d93f8ef1",
+   "new": "4ef9401483284e71"
+  },
+  {
+   "off": 1050692,
+   "va": "0x40100c44",
+   "len": 4,
+   "old_sha256": "983ff5bc9dcfc5398c29a480165c4442b7e3d67953e4c507953387c3b84c859c",
+   "new": "40148662"
+  },
+  {
+   "off": 1343272,
+   "va": "0x40148328",
+   "len": 114,
+   "old_sha256": "40efbcc2aa1fe56a9a7f4a60c75622eca43ff7d541225d791d065709af52aa16",
+   "new": "4eb9400cf9a82f004eb94006bb18588f4a0066000058487800014eb94007faf4588f4a8066000038487800024eb94007faf4588f4a8066000034487800034eb94007faf4588f4a8066000022487800044eb94007faf4588f4a806600001000000000000000004ef9400235224ef94002357e",
+   "from_original": [
+    {
+     "at": 94,
+     "off": 143642,
+     "va": "0x4002351a",
+     "len": 8,
+     "sha256": "4acd7c9697a37a9cff865c775a2c084a98eb2638bb2f864c9a776fa1d93f8ef1"
+    }
+   ]
+  },
+  {
+   "off": 1344098,
+   "va": "0x40148662",
+   "len": 288,
+   "old_sha256": "c49fd3b652e068233b78f7300696e2201ddf3932072b8b303de297e7d0354827",
+   "new": "2f02242f000c2f024eb94007240c588f7201b081660000482f024eb9400724a0588f4a00670000184239401487ec203940a78e2823c0401487e0600000562f024eb940072470588f4a00670000466100004a4a806700003c241f70014e754a39401487ed6700002c2f024eb9400724a0588f4a006700001c487800014eb94007faf4588f4a806700000a700113c0401487ec241f4ef9400234b64a39401487ed670000224a39401487ec66000034203940a78e2890b9401487e00c80000004006400001e487800024eb94007faf4588f4a806600000c4239401487ed70004e75700113c0401487ed4e754879404a8cb848780002487800184eb9400cfaf42f004eb940005f864fef0010201200800100000024800000000000004ef9400233a6",
+   "from_original": [
+    {
+     "at": 276,
+     "off": 143264,
+     "va": "0x400233a0",
+     "len": 6,
+     "sha256": "a8daba117e6cfe9d4daf86594645b03e2dca0360ba0399d9d8c9401324082da2"
+    }
+   ]
+  },
+  {
+   "off": 1344480,
+   "va": "0x401487e0",
+   "len": 4,
+   "old_sha256": "ad95131bc0b799c0b1af477fb14fcf26a6a9f76079e48bf090acb7e8367bfd0e",
+   "new": "00000000"
+  },
+  {
+   "off": 1344492,
+   "va": "0x401487ec",
+   "len": 2,
+   "old_sha256": "ca2fd00fa001190744c15c317643ab092e7048ce086a243e2be9437c898de1bb",
+   "new": "0000"
+  },
   {
    "off": 143696,
    "va": "0x40023550",
@@ -58,6 +145,36 @@
    "len": 8,
    "old_sha256": "f5c270ec0b7f79deaf9f34be302b0b1f3b4a7beded77bcacce8c98a669dce28a",
    "new": "0000000000000000"
+  },
+  {
+   "off": 361802,
+   "va": "0x4005894a",
+   "len": 6,
+   "old_sha256": "8d1503d38f264a9b0be0700a53c1e2e61354803cc529f54092a511ae826bca7f",
+   "new": "4ef9401696a0"
+  },
+  {
+   "off": 725312,
+   "va": "0x400b1540",
+   "len": 4,
+   "old_sha256": "e9880337d844cf176ef8fcd2c5b9af5e400f38371cf3e09faa9181125dfde78a",
+   "new": "4014a660"
+  },
+  {
+   "off": 1479328,
+   "va": "0x401696a0",
+   "len": 62,
+   "old_sha256": "5af162325437ca1028a34ab75d33ed70e536f1f14c6f53d52751f91b5f1fcc43",
+   "new": "0000000000007001b0aa000c6600002a22122f014eb9400cf8662f004eb94000eb90588f2f004eb94001263c508f4a0067000006245f4e754ef940058950",
+   "from_original": [
+    {
+     "at": 0,
+     "off": 361802,
+     "va": "0x4005894a",
+     "len": 6,
+     "sha256": "8d1503d38f264a9b0be0700a53c1e2e61354803cc529f54092a511ae826bca7f"
+    }
+   ]
   }
  ]
 }

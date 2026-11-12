@@ -2,23 +2,20 @@
 """Apply patches to a decompressed Model:Cycles OS 1.13 MAIN OS (section 3).
 
 usage:
-  python3 tools/apply_patches.py <section_3_MAIN_OS.bin> <out.bin> [--latching-mute <01-latching-mute.json>] <patch> ...
-  python3 tools/apply_patches.py <section_3_MAIN_OS.bin> <out.bin> --latching-mute <01-latching-mute.json> --all
+  python3 tools/apply_patches.py <section_3_MAIN_OS.bin> <out.bin> <patch> ...
+  python3 tools/apply_patches.py <section_3_MAIN_OS.bin> <out.bin> --all
 
-A <patch> is a file (patches/05-reverb-fx.json), a file name (05-reverb-fx) or an id (reverb-fx). Patches that a chosen
-patch requires from this repository (e.g. core) are added automatically.
+A <patch> is a file (patches/04-reverb-fx.json), a file name (04-reverb-fx) or an id (reverb-fx). Patches that a chosen
+patch requires (e.g. core) are added automatically.
 
-Two patch formats are accepted:
-  * this repository's format: every write carries "len" + "old_sha256" (the original bytes are not published).
-    Where a patch needs original firmware bytes inside its own code (the few instructions a hook moves out of the
-    firmware, see "from_original"), "new" holds zeros there; they are copied from your input file and checked
-    against a SHA-256, so no Elektron bytes are published;
-  * drumkilla's elektron-model-tweaks format: every write carries the original bytes in "old"
-    (needed for 01-latching-mute.json, which 01-mute-solo requires).
+Every write carries "len" + "old_sha256": the original bytes are not published. Where a patch needs original firmware
+bytes inside its own code (the few instructions a hook moves out of the firmware, see "from_original"), "new" holds
+zeros there; they are copied from your input file and checked against a SHA-256, so no Elektron bytes are published.
+A write with "len" 0 at the end of the image appends to it (the core's payload area).
 
-Every write is checked against the input before anything is changed, patches are applied in "order" (latching mute first),
-"requires" must be met, writes may only overlap writes of a required patch, and the 32 bytes of the
-update key at 0x401296b2 (the Model:Samples key of a cross-flash base) are never touched.
+Every write is checked against the input before anything is changed, patches are applied in "order", "requires" must
+be met, writes may only overlap writes of a required patch, and the 32 bytes of the update key at 0x401296b2 (the
+Model:Samples key of a cross-flash base) are never touched.
 """
 import hashlib
 import json
@@ -72,8 +69,8 @@ def resolve(names):
 
 
 def order_key(t):
-    """Apply order: drumkilla's latching mute first, then this repository's patches by "order"."""
-    return (0, 0) if t['id'] == 'latching-mute' else (1, t['order'])
+    """Apply order: by "order"."""
+    return t['order']
 
 
 def sha256(b):
@@ -126,6 +123,9 @@ def apply(img, patches):
                 old = bytes.fromhex(w['old'])
                 ok = bytes(img[off:off + len(old)]) == old
                 n = max(len(old), len(new))
+            elif w['len'] == 0:                               # append (payload area of the core)
+                ok = off == len(img) and w['old_sha256'] == sha256(b'')
+                n = len(new)
             else:
                 n = w['len']
                 ok = hashlib.sha256(img[off:off + n]).hexdigest() == w['old_sha256'] and len(new) == n
@@ -136,7 +136,7 @@ def apply(img, patches):
             if off < KEY_OFF + 32 and end > KEY_OFF:
                 raise ValueError(f"{pid}: would touch the update key")
             for a, b, who in used:
-                if not (end <= a or off >= b or who in t.get('requires', [])):
+                if not (end <= a or off >= b or who == pid or who in t.get('requires', [])):
                     raise ValueError(f"{pid}: write at {off + VA0:#010x} collides with {who}")
             img[off:off + len(new)] = new
             used.append((off, end, pid))
@@ -148,22 +148,16 @@ def parse_args(argv):
     if len(argv) < 3:
         sys.exit(__doc__)
     src, dst, rest = argv[0], argv[1], argv[2:]
-    paths, lm = [], None
+    paths = []
     i = 0
     while i < len(rest):
-        if rest[i] == '--latching-mute':
-            lm = rest[i + 1]
-            i += 2
-        elif rest[i] == '--all':
+        if rest[i] == '--all':
             paths += all_patches()
             i += 1
         else:
             paths.append(rest[i])
             i += 1
-    paths = resolve(paths)
-    if lm:
-        paths.insert(0, lm)
-    return src, dst, paths
+    return src, dst, resolve(paths)
 
 
 def main():

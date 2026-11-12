@@ -114,4 +114,62 @@ from g2_core import L_HOOK, I_HOOK
 chk('Haken: Laden 0x4005b4b0 -> jsr HL, neues Pattern 0x4006155e -> jsr HI, Encoder 0x400081b8 -> jsr CED',
     img[L_HOOK - BASE:L_HOOK - BASE + 6] == C.jsr(S['HL']) and img[I_HOOK - BASE:I_HOOK - BASE + 6] == C.jsr(S['HI'])
     and img[C.H_HOOK - BASE:C.H_HOOK - BASE + 6] == C.jsr(S['CED']))
+# ---- SETTINGS (Taste 13) loslassen nach langem Halten: speichern nur ohne andere Taste dazwischen (01.11.2026)
+import g2_core as GC
+UIP7, VIEW7, EV7, FVT7 = 0x4F046000, 0x4F043000, 0x4F043200, 0x4F044800
+def release13(last, pend=1):
+    e7 = Emu(img); saved = []
+    e7.u.hook_add(UC_HOOK_CODE, lambda u, a, z, _: (u.reg_write(mk.UC_M68K_REG_D0, UIP7), u.reg_write(mk.UC_M68K_REG_PC, e7.r32(u.reg_read(mk.UC_M68K_REG_A7))),
+                  u.reg_write(mk.UC_M68K_REG_A7, u.reg_read(mk.UC_M68K_REG_A7) + 4)), begin=0x400CF9A8, end=0x400CF9A8)
+    def sv(u, a, z, _):
+        saved.append(a); sp = u.reg_read(mk.UC_M68K_REG_A7); u.reg_write(mk.UC_M68K_REG_PC, e7.r32(sp)); u.reg_write(mk.UC_M68K_REG_A7, sp + 4)
+    for t in (0x40039570, 0x40077DA8): e7.u.hook_add(UC_HOOK_CODE, sv, begin=t, end=t)
+    e7.u.mem_write(0x4F044F00, b'\x4e\x75'); e7.u.mem_write(FVT7, struct.pack('>I', 0x4F044F00) * 64); e7.w32(VIEW7, FVT7)
+    e7.w32(VIEW7 + 0x74, 0xFFFFFFFF); e7.w32(EV7 + 0x0C, 13); e7.w32(EV7 + 0x10, 0x10); e7.w32(C.TIMER, 1000)
+    e7.w32(C.VARS + C.V_PEND, pend); e7.w32(GC.KEY_LAST, last)
+    _, good = e7.call(0x4001C0D2, VIEW7, EV7, count=50000)
+    return saved, e7.r32(C.VARS + C.V_PEND), good
+s1, p1, g1 = release13(0xFFFFFFFF); s2, p2, g2 = release13(6)        # -1: seit dem langen Halten keine Taste
+chk('SETTINGS lange gehalten, losgelassen: speichert (%s); mit anderer Taste dazwischen: weder Speichern noch Menue (%s); PEND geloescht'
+    % ([hex(x) for x in s1], [hex(x) for x in s2]), s1 == [0x40039570] and s2 == [] and p1 == 0 and p2 == 0 and g1 and g2)
+# ---------------- smp22: FUNC + Knopf ohne Grobschritte: echter Knopf-Handler 0x4001f4f0 ab der Parameter-Wahl (0x4001f770)
+#   mit echten Anzeige-Objekten (statische Konstruktoren 0x400e7aa8 / 0x400de244), Schrittmaschine und HELD; Ansicht gestubbt
+#   (Vtable +0x54 = Wert anwenden: Delta mitschreiben). Stock: mit FUNC wird keine Drehung uebernommen (Sprung spaeter).
+import g2_core as GC9
+VIEW9, VT9, EV9, FR9, ST9 = 0x4F044000, 0x4F045000, 0x4F046000, 0x4F03F000, 0x4F047000
+def knob_emu(im):
+    e = Emu(im); e.call(0x400E7AA8, count=3000000); e.call(0x400DE244, count=20000000)
+    if len(im) > len(STOCK): e.call(V2SYM['core']['DTINIT'], count=200000)
+    e.u.mem_write(VIEW9, bytes(0x400)); e.w32(VIEW9, VT9); ap = []
+    def stub(rec):
+        def f(u, a, z, _):
+            sp = u.reg_read(mk.UC_M68K_REG_A7)
+            if rec is not None: rec.append(struct.unpack('>i', struct.pack('>I', e.r32(sp + 12)))[0])
+            u.reg_write(mk.UC_M68K_REG_D0, 0); u.reg_write(mk.UC_M68K_REG_PC, e.r32(sp)); u.reg_write(mk.UC_M68K_REG_A7, sp + 4)
+        return f
+    for va, rec in ((0x4006BDFE, None), (0x4005A5CC, None), (0x4006BA76, None), (ST9, ap), (ST9 + 0x10, None),
+                    (0x40076082, None), (0x4006B71C, None)):
+        e.u.mem_write(va, b'\x4e\x75'); e.u.hook_add(UC_HOOK_CODE, stub(rec), begin=va, end=va)
+    for off in range(0, 0x100, 4): e.w32(VT9 + off, ST9 + 0x10)
+    e.w32(VT9 + 0x54, ST9)
+    return e, ap
+def knob_turn(im, param, knob, func, n=10):
+    e, ap = knob_emu(im); e.held = {C.KEY_FUNC} if func else set()
+    for _ in range(n):
+        e.u.mem_write(EV9, bytes(0x20)); e.w32(EV9 + 0xC, knob + 2); e.w32(EV9 + 0x10, 1)
+        sp = FR9 - 0x100; e.u.mem_write(sp, bytes(0x100)); e.u.reg_write(mk.UC_M68K_REG_A7, sp); e.u.reg_write(mk.UC_M68K_REG_A6, FR9)
+        for r, v in ((mk.UC_M68K_REG_D2, EV9), (mk.UC_M68K_REG_D3, param), (mk.UC_M68K_REG_D5, 0), (mk.UC_M68K_REG_D6, 0),
+                     (mk.UC_M68K_REG_D7, knob), (mk.UC_M68K_REG_A2, VIEW9), (mk.UC_M68K_REG_A3, 0x4006F762), (mk.UC_M68K_REG_A4, C.HELD)):
+            e.u.reg_write(r, v)
+        e.u.emu_start(0x4001F770, 0x4001F96A, count=200000)
+    return ap
+chk('Firmware: Knopf allein 1 Wert je Raster; mit FUNC wird keine Drehung uebernommen (springt spaeter)',
+    knob_turn(STOCK, 12, 4, 0) == [256] * 10 and knob_turn(STOCK, 12, 4, 1) == [])
+IMGF = v2_image()
+res = [knob_turn(IMGF, p, k, f) for p, k in ((12, 4), (84, 2), (85, 7), (6, 3)) for f in (0, 1)]
+chk('Core: FUNC + Knopf = 1 Wert je Raster wie ohne FUNC (SHAPE, Monom Glide / Noise, Attack) %s' % [len(r) for r in res],
+    all(r == [256] * 10 for r in res))
+chk('Core: Stelle 0x4001f81e gepatcht (moveq #0,d0 statt jsr HELD), smp19-Stellen wieder Stock',
+    all(img[va - BASE:][:len(nw)] == nw for va, _, nw in GC9.FUNC_FLAT)
+    and all(img[va - BASE:][:n] == STOCK[va - BASE:][:n] for va, n in ((0x4001F778, 4), (0x4001F7B4, 2), (0x4001F7D6, 2))))
 done()

@@ -1,315 +1,220 @@
 # PPPCCC M:C Mods
 
 Extra features for the **Elektron Model:Cycles OS 1.13**, the official firmware anyone can download from Elektron.
-They also run on a **Model:Samples** that runs the Cycles OS. You get solo and better mutes, tempo-synced delay notes,
-new effects, strummed chords, grooves with humanize, an audio load meter, absolute CONTROL ALL, a selection mode
-for trigs, a second fill, a filter on every track, an LFO amount and direct pattern jumps.
+They also run on a **Model:Samples** that runs the Cycles OS.
 
-Every feature is a separate patch with its own documentation, generator and emulator test, and you can choose which
-ones you install.
+**With version 2.3 this project has reached its final form, more or less, and with it I consider my work on it done.**
+My goal was always to build my personal interpretation of the Model:Cycles and the Model:Samples: the instrument I
+wanted for my own music, musical and hands-on, good to play live, with as little menu diving as possible. I am happy
+about everyone who enjoys it too.
 
-> **Status: v2.2.0.** Every patch was developed in an emulator and tested on my own Model:Samples running the Cycles OS.
-> A real Model:Cycles has **not** been tested yet. The code paths are the same, but please report back if you try it.
-> New in v2.2.0: patches 13–15; the core (patch 00) got an update for them. Patches 01–12 are unchanged.
-> What changed: [changelog](docs/CHANGELOG.md#v220-2026-10-30). Coming from v1.0.0? Read [this](docs/CHANGELOG.md#upgrading-from-v100).
+Everything here is open: **fork it, change it, take it further.** I would love to see where others take it.
+Please understand that I don't have the capacity to take personal requests or to offer support or other services of
+that kind. I will try to fix bugs here and there, as far as my time allows.
 
-## Features
+A big thank-you to all the modders who made this possible with their work and their inspiration (see
+[Credits](#credits)).
 
-Each feature is one patch; the number is the patch number. The newest come first. A click on a demo picture plays
-the sound recording (it opens on the project page, [gialloinfuso.github.io/PPPCCC-M-S-Mods](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/)). The heading links to the full page
-with storage, hooks, memory and tests. Patches 05–11, 13 and 14 build on a small **core**
-([patch 00](docs/patches/00-core.md)), which the build tool adds automatically; 01–04, 12 and 15 need nothing else.
+**[☕ Buy me a coffee](https://ko-fi.com/pppccc)** ·
+**[⚡ Flasher](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/flasher/)** ·
+**[⬇ Download (ZIP)](https://github.com/gialloinfuso/PPPCCC-M-S-Mods/archive/refs/heads/main.zip)** ·
+**[Features](#patches)** ·
+**[Project page](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/)**
 
-> **UPDATE v2.2.0 · core (00):** the core now also gives mods extra sound parameters, saved with the sound, p-lockable
-> and usable as LFO / velocity destination. The track filter (13) and the LFO amount (14) use it. Nothing changes for
-> 01–12, and your sounds and patterns load as before.
+> **Status: v2.3.0, the final release.** Every patch was developed in an emulator and tested on my own Model:Samples
+> running the Cycles OS. A real Model:Cycles has **not** been tested yet; the code paths are the same.
+> New in v2.3.0: three machines (Grit, Vlvt, Monom), Hall / Room / Plate, per-track strum, parameter undo and pad mode,
+> plus updates to most patches. The patch numbers changed. What changed: [changelog](docs/CHANGELOG.md#v230-2026-11-12).
 
-### 15 · Direct jump ([details](docs/patches/15-direct-jump.md)) · `NEW v2.2.0`
+## The core
+
+Most patches build on a small **core** ([patch 00](docs/patches/00-core.md)). The flasher and the build tool add it
+automatically. It holds what several patches share (gesture and key slots, value popups, pattern and sound storage for
+extra parameters, a payload area for larger code), and it brings a few improvements of its own:
+
+- **FUNC + DECAY = amp attack** (0 to about 2 s) on every machine, p-lockable and saved with the sound.
+- **TRACK + T1…T6** selects the track; T1…T6 alone no longer do.
+- **FUNC + knob** moves in fine steps like the knob alone, so FUNC + knob is free for extra parameters.
+- A **multi-line browser** (three names in the small font) with **scrolling names**.
+- **Volume and pan as numbers** on the main screen.
+- **RETRIG opens the save menu** in the browser (shown as RT=MENU) instead of FUNC.
+
+## Patches
+
+Each feature is one patch; the number is the patch number, the newest come first. The heading links to the full page
+with controls, storage, hooks, memory and tests. "Needs core" means the core is added with it.
+
+### 19 · Pad Mode ([details](docs/patches/19-pad-mode.md)) · `NEW v2.3.0` · needs core
+
+<img src="assets/titles/19.png" width="320" alt="">
+
+Turn a track into a **pad track**: the sequencer leaves it alone and the trig keys play its steps, with their p-locks,
+note, length and sample lock. Hold **TRACK + RETRIG** to see the pad tracks, **TRACK + RETRIG + trig 1–6** to switch a
+track. FUNC + trig adds or clears a step; MIDI notes 36–51 play the steps too.
+
+### 18 · Parameter undo: 3x longer ([details](docs/patches/18-param-undo.md)) · `NEW v2.3.0`
+
+<img src="assets/titles/18.png" width="320" alt="">
+
+The "old → new" popup after turning a knob stays three times as long, so **BACK** has more time to undo the change.
+
+### 17 · Monom: monophonic synth ([details](docs/patches/17-mono.md)) · `NEW v2.3.0` · needs core, 15, 16
+
+<img src="assets/titles/17.png" width="320" alt="">
+
+A 9th machine in the spirit of the SH-101, Minimoog, Pro-One and MS-20, warm and imperfect. **COLOR** = wave (SAW, SQR,
+PWM, S+P, TRI, SYNC, DTN, RING), **SHAPE** = timbre, **SWEEP** = sub oscillator, **CONTOUR** = drive, **FUNC + PITCH** =
+glide, **FUNC + CONTOUR** = noise. Drift, random detune and free-running phases. Use the track filter (12) as its filter.
+
+### 16 · Vlvt: string machine ([details](docs/patches/16-strings.md)) · `NEW v2.3.0` · needs core, 15
+
+<img src="assets/titles/16.png" width="320" alt="">
+
+An 8th machine: a string ensemble in the style of a Solina. **SHAPE** = chord (the CHORD list, plus mono and unison),
+**COLOR** = 8' / 4' mix, **SWEEP** = tone, **CONTOUR** = ensemble. Strummed with patch 06.
+
+### 15 · Grit: sampler machine ([details](docs/patches/15-sampler.md)) · `NEW v2.3.0` · needs core
 
 <img src="assets/titles/15.png" width="320" alt="">
 
-Change the pattern **right away** instead of at the end of the pattern, and keep the position. Press **PATTERN**, then
-**FUNC + a trig key**: the new pattern takes over within the next steps and plays on from the position the old one was
-at. The selection stays open, so you can jump again and again.
+A 7th machine: a simple sampler in the style of the Model:Samples, with six models: **CLEAN**, **SP** (26 kHz,
+12 bit, drop-sample), **LM** (28 kHz, 8-bit mu-law), **MIRAGE** (29.4 kHz, 8 bit), **TX16W** (33.3 kHz, 12-bit floating
+point) and **MPC60** (40 kHz, 12-bit floating point). Samples come from the +Drive and are chosen in the browser.
+**COLOR** = start, **SHAPE** = length (the waveform shows while you turn), **CONTOUR** = model, **PUNCH** = loop,
+**GATE** = reverse. Sample locks lock only the sample. Upload samples with Elektron Transfer (Device Config > Transfer: SMP).
 
-- A trig key without FUNC changes the pattern at its end, as usual.
-- In per-track mode every track keeps its own position.
-- The jump sends the MIDI program change like a normal change.
+> Grit, Vlvt and Monom only work together: Vlvt needs Grit, Monom needs Grit and Vlvt.
 
-### 14 · LFO Amount ([details](docs/patches/14-lfo-amount.md)) · `NEW v2.2.0`
+### 14 · Direct Pattern Jump ([details](docs/patches/14-direct-jump.md)) · `UPDATE v2.3.0`
 
 <img src="assets/titles/14.png" width="320" alt="">
 
-A new parameter per track that says how strongly the LFO depth acts: 0 = the LFO does nothing, 127 = full depth (the
-default, exactly as before). The LFO settings themselves stay as they are, so you can fade an LFO in and out.
+Change the pattern **right away** and keep the position: **PATTERN**, then **FUNC + a trig key**. A trig key alone
+changes at the end of the pattern, as usual. **New:** the pattern selection latches (only PATTERN closes it), and
+copying, pasting or clearing a pattern keeps it open.
 
-- **Hold RETRIG + turn LFO SPEED** = LFO Amount of the track. Without RETRIG the knob is LFO Speed as usual.
-- A real parameter: p-lockable, LFO and velocity destination (the LFO can modulate its own amount), saved with the
-  sound.
-
-### 13 · Track filter ([details](docs/patches/13-track-filter.md)) · `NEW v2.2.0`
+### 13 · LFO Amount ([details](docs/patches/13-lfo-amount.md)) · needs core
 
 <img src="assets/titles/13.png" width="320" alt="">
 
-A warm, resonant **12 dB low-pass filter on every track**, with its own envelope, on all six machines.
+Hold **RETRIG** + turn **LFO SPEED** = how much of the LFO depth is used (0–127; 127 = as before). A real parameter:
+p-lockable, LFO and velocity destination, saved with the sound.
 
-- **Hold RETRIG + press GATE** = filter mode on ("FILTER ON"); the four knob LEDs light up. **Tap RETRIG** = off.
-- In the filter mode: **PITCH** = cutoff (20 Hz–20 kHz, 127 = off), **COLOR** = resonance, **SHAPE** = envelope
-  depth (right opens, left closes, middle = off), **DECAY** = envelope decay (5 ms–5 s).
-- Hold a trig to p-lock the filter. All four are real parameters: LFO and velocity destinations, CC 74 (cutoff) and
-  CC 71 (resonance), saved with the sound.
-- At cutoff 127 the track sounds exactly as without the filter; switching on and off is crossfaded, so it never
-  clicks. Old sounds load with the filter open.
-
-### 12 · Fill 2 ([details](docs/patches/12-fill2.md))
+### 12 · Per Track LP Filter + Env Amt & Latched Filter Mode ([details](docs/patches/12-track-filter.md)) · `UPDATE v2.3.0` · needs core
 
 <img src="assets/titles/12.png" width="320" alt="">
 
-A second fill with its own trig conditions. **Hold PAGE** for the fill as usual, then **also hold FUNC**: as long as
-both are held, Fill 2 replaces Fill 1. Let go of FUNC and you are back in Fill 1. With the fill latched (TRACK + PAGE),
-holding FUNC switches to Fill 2 too.
+A resonant 12 dB low-pass filter with its own envelope on every track. **RETRIG + GATE** = filter mode: **PITCH** =
+cutoff, **COLOR** = resonance, **SHAPE** = envelope amount, **DECAY** = envelope decay; tap **RETRIG** = off. Real
+parameters (p-locks, LFO, velocity, CC 74 / 71). **New:** **GATE + PLAY** resets the filter of the selected track.
 
-Two new trig conditions belong to it. In the list they come right after FILL and !FILL: FILL, !FILL, **FIL2**,
-**!FIL2**, PRE, …
-
-| Condition | no fill | Fill 1 (PAGE) | Fill 2 (PAGE + FUNC) |
-|---|---|---|---|
-| FILL | – | plays | – |
-| !FILL | plays | – | plays |
-| FIL2 | – | – | plays |
-| !FIL2 | plays | plays | – |
-
-Patterns from the stock OS load unchanged. On a firmware without this patch, FIL2 and !FIL2 trigs always play.
-
-### 11 · Trig select ([details](docs/patches/11-trig-select.md))
+### 11 · Fill 2 & Trig Conditions ([details](docs/patches/11-fill2.md)) · `UPDATE v2.3.0`
 
 <img src="assets/titles/11.png" width="320" alt="">
 
-Edit many trigs at once without holding them all down, because you only have so many fingers.
+Hold **PAGE + FUNC** = Fill 2 with its own conditions **FIL2** / **!FIL2**. **New:** the conditions **PTC** / **!PTC**
+(a new pattern is waiting) and **LST** / **!LST** (last pass before another pattern), **x:12** and **x:16**, and a
+reordered list: A:B first, then FILL / FIL2 / PTC / PRE / NEI / 1st / LST, percentages last.
 
-- **SETTINGS + PAGE** turns the selection mode on or off (off clears the selection).
-- In the mode, **tap a trig** to select or deselect it. Selected trigs blink fast. Trigs are not set or cleared.
-- **FUNC + PAGE** selects all trigs of the track, again = none. **PAGE** changes the page as usual.
-
-The firmware treats the selected trigs as if you held them. So everything that works on held trigs works on the
-selection:
-
-- **Knobs** p-lock all selected trigs. **Note, velocity, length and nudge** change all of them.
-- **REC** copies the selected trigs ("Copy N Trigs"), **STOP** pastes the copied trigs starting at the first selected
-  step, **PLAY** clears the p-locks of the selected trigs.
-
-With control mode **Absolute**, all selected trigs take the value of the first selected trig; with **Relative** every
-trig keeps its own offset.
-
-### 10 · Control mode: relative or absolute CONTROL ALL ([details](docs/patches/10-control-mode.md))
+### 10 · Trigger Select Mode ([details](docs/patches/10-trig-select.md)) · needs core
 
 <img src="assets/titles/10.png" width="320" alt="">
 
-**Hold TRACK + turn a knob** changes that parameter on all six tracks (CONTROL ALL). The firmware does this
-**relatively**: every track moves by the same amount from its own value, and stops at its limit. This patch adds
-**absolute** mode: all tracks take the new value of the selected track.
+**SETTINGS + PAGE** = selection mode. Tap trigs to select them (they blink), **FUNC + PAGE** = all / none. Knobs, note /
+velocity / length, nudge and REC / STOP / PLAY then act on all selected trigs, as if you held them.
 
-- **Hold TRACK + tap SETTINGS** switches between Relative and Absolute. A popup shows the mode.
-- It applies to TRACK + any knob, TRACK + LEVEL (volume), FUNC + TRACK + LEVEL (pan), the humanize of patch 09 and
-  the trig selection of patch 11.
-- Relative is the stock behaviour and the default. The setting is kept after power-off.
-
-### 09 · Grooves and humanize ([details](docs/patches/09-groove.md))
+### 09 · Control All & Parameter change absolute/relative ([details](docs/patches/09-control-mode.md)) · `UPDATE v2.3.0` · needs core
 
 <img src="assets/titles/09.png" width="320" alt="">
 
-**Grooves.** A groove template shifts and accents the 16th steps. **Hold FUNC + turn Swing** to choose it (4 detents
-per step, the popup shows the name):
+**TRACK + SETTINGS** switches CONTROL ALL between **relative** (stock) and **absolute** (all tracks take the new value).
+**New:** hold **TRACK** to see which tracks CONTROL ALL affects, **TRACK + trig 1–6** adds or removes a track.
 
-| Groove | Length | Feel |
-|---|---|---|
-| Swing | – | the firmware's own swing (stock) |
-| Boom Bap | 1 bar | laid-back hip-hop 16ths |
-| Disco | 1 bar | live-feel disco 16ths |
-| Reggae | 4 bars | displaced accents, loose feel |
-| Bongo | 4 bars | bongo 16ths |
-| Caixixi | 1 bar | shaker accents |
-| Highlife | 2 bars | clave accents |
-| Kuduro | 2 bars | displaced 8th-note triplet accents |
-
-Each track's own **Swing** sets how strongly that track follows the groove: at the minimum it plays straight, at the
-maximum it plays the full groove, both timing and accents. So the hi-hat can groove while the kick stays straight.
-
-[<img src="assets/stills/Groove_BoomBap.jpg" width="360" alt="Groove: Boom Bap – sound demo">](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/assets/videos/Groove_BoomBap.mp4)
-
-**Humanize** adds small random variations per track, on top of any groove (also on Swing):
-
-- **Hold SETTINGS + turn Swing** = humanize **timing** of the selected track, 0–100. At 100, notes move up to ±0.15
-  step, about ±19 ms at 120 BPM.
-- **Hold MACHINE + turn Swing** = humanize **velocity** of the selected track, 0–100. At 100, up to about ±29 %.
-- **Hold TRACK as well** to change all six tracks at once (relative or absolute, see patch 10).
-
-Groove and humanize are saved **in the pattern**, so every pattern can have its own feel. To make MACHINE usable as a
-modifier, the MACHINE menu now opens on release instead of on press.
-
-### 08 · Load meter ([details](docs/patches/08-load-meter.md))
+### 08 · Grooves and humanize ([details](docs/patches/08-groove.md)) · `UPDATE v2.3.0` · needs core
 
 <img src="assets/titles/08.png" width="320" alt="">
 
-Shows how busy the audio engine is. When the load gets close to 100 %, the controls feel sluggish, because the
-interface only gets the time the audio leaves over. **Hold SETTINGS + turn REVERB SEND right** to show a small box
-"LOAD peak/average" in percent, updated every half second. Turn it **left** to hide it. The meter is always off after
-power-on.
+**FUNC + Swing** = groove: Swing, Boom Bap, Disco, Dancehall 1 / 2, Hip Hop, Jazz Rock, Perc 1–3, Soca (**new** set);
+Swing per track = amount. **SETTINGS / MACHINE + Swing** = humanize timing / velocity (with TRACK: all tracks).
 
-For reference, on a Model:Samples: idle 82/76, VIBDEL 83/78, CHODEL 85/80, CHODEL + RAZR 89/85. The stock firmware
-alone already uses about three quarters.
-
-### 07 · Chord Strum ([details](docs/patches/07-strum.md))
+### 07 · Audio load meter ([details](docs/patches/07-load-meter.md)) · `UPDATE v2.3.0` · needs core
 
 <img src="assets/titles/07.png" width="320" alt="">
 
-The CHORD machine plays its notes one after another, like a strummed guitar, instead of all at once. **Hold SETTINGS
-+ turn SHAPE**:
+**RETRIG + BPM** (**new**) shows or hides "LOAD peak/average", the audio load in percent, updated every 0.5 s.
 
-- **0**: all notes at once (stock)
-- **right, 1 to 80**: low to high, the value is the time between two notes in milliseconds
-- **left, −1 to −80**: high to low
-
-The root note is part of the strum too. The value is saved **in the pattern** and applies to every CHORD track.
-
-[<img src="assets/stills/Chord_Strum.jpg" width="360" alt="Chord Strum – sound demo">](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/assets/videos/Chord_Strum.mp4)
-
-### 06 · Delay FX: Digital Delay, Vibrato Delay / Chorus Delay (VIBDEL / CHODEL) ([details](docs/patches/06-delay-fx.md))
+### 06 · Strum for CHORD and Vlvt ([details](docs/patches/06-strum.md)) · `UPDATE v2.3.0` · needs core
 
 <img src="assets/titles/06.png" width="320" alt="">
 
-Three new delays for the delay slot. **Hold TRACK + turn Delay Time** to switch Delay → Digital → VIBDEL → CHODEL
-(4 detents per step). Time, Feedback and Send work as usual, including the note values and exact triplets of patch 04.
-The choice is saved **in the pattern**.
+**New:** per track and saved with the sound. **FUNC + SHAPE** = strum time (OFF, 2–250 ms, then note values in tempo),
+**FUNC + COLOR** = pattern: UP, DOWN, RND, 1324, 1423, 4132, 4231, ROOT, TOP. Every chord note gets its own envelope.
 
-- **Digital**: the opposite of the dark stock delay. Bright and clean, up to 5.4 s. Every repeat stays bright
-  (low-pass about 12.8 kHz instead of about 1.4 kHz) and gets a little thinner in the lows (high-pass about 240 Hz),
-  so long feedback tails stay clear.
-- **VIBDEL**: vibrato on the delay. The feedback is modulated too, so the repeats get more and more wobbly.
-- **CHODEL**: a clean repeat plus a chorused one, left and right moving in opposite directions, for a wide sound.
-- **Hold SETTINGS + turn DELAY SEND** = modulation speed of VIBDEL / CHODEL. A popup shows the value.
-
-The repeats of VIBDEL and CHODEL are slightly darker and thinner than the original, like a tape or bucket-brigade delay.
-
-**Digital Delay**
-
-[<img src="assets/stills/Digital_Delay.jpg" width="360" alt="Digital Delay – sound demo">](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/assets/videos/Digital_Delay.mp4)
-
-**Vibrato Delay (VIBDEL)**
-
-[<img src="assets/stills/Vibrato_Delay.jpg" width="360" alt="Vibrato Delay – sound demo">](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/assets/videos/Vibrato_Delay.mp4)
-
-**Chorus Delay (CHODEL)**
-
-[<img src="assets/stills/Chorus_Delay.jpg" width="360" alt="Chorus Delay – sound demo">](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/assets/videos/Chorus_Delay.mp4)
-
-### 05 · Reverb FX: Chorus I / II, Phaser, Reverb-Phaser (RAZR) ([details](docs/patches/05-reverb-fx.md))
+### 05 · Delay FX: Digital delay, VIBDEL, CHODEL ([details](docs/patches/05-delay-fx.md)) · `UPDATE v2.3.0` · needs core
 
 <img src="assets/titles/05.png" width="320" alt="">
 
-Four new effects for the reverb slot. **Hold TRACK + turn Reverb Size** to switch Reverb → Chorus I → Chorus II →
-Phaser → RAZR. One step needs 4 detents, so you don't skip past an effect by accident, and the parameter names change
-at once. Every track's reverb send feeds the chosen effect. The choice is saved **in the pattern**, so each pattern can
-have its own effect.
+**TRACK + Delay Time**: Delay → Digital → VIBDEL → CHODEL. **FUNC + DELAY SEND** (**new**) = modulation speed.
+Stored per pattern.
 
-- **Chorus I / Chorus II**: a lush stereo chorus with two modes, in the style of classic 80s polysynth choruses.
-  **Size** = speed, **Tone** = depth.
-- **Phaser**: a 4-stage phaser in the style of classic phaser pedals. **Size** = speed (0.1–6 Hz), **Tone** = color.
-- **RAZR**: a dark, gritty lo-fi reverb that feeds a phaser. **Send** = mix, **Size** = reverb length, **Tone** = phaser
-  speed (0.05–4.9 Hz; at 0 you hear only the lo-fi reverb).
-
-**Chorus I**
-
-[<img src="assets/stills/Chorus_I.jpg" width="360" alt="Chorus I – sound demo">](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/assets/videos/Chorus_I.mp4)
-
-**Chorus II**
-
-[<img src="assets/stills/Chorus_II.jpg" width="360" alt="Chorus II – sound demo">](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/assets/videos/Chorus_II.mp4)
-
-**Phaser**
-
-[<img src="assets/stills/Phaser.jpg" width="360" alt="Phaser – sound demo">](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/assets/videos/Phaser.mp4)
-
-**RAZR**
-
-[<img src="assets/stills/RAZR.jpg" width="360" alt="RAZR – sound demo">](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/assets/videos/RAZR.mp4)
-
-### 04 · Delay notes ([details](docs/patches/04-delay-notes.md))
+### 04 · Reverb FX: Chorus I / II, Phaser, RAZR, Hall, Room, Plate ([details](docs/patches/04-reverb-fx.md)) · `UPDATE v2.3.0` · needs core
 
 <img src="assets/titles/04.png" width="320" alt="">
 
-The delay of the Model:Cycles is tempo-synced, but Delay Time only shows numbers. With this patch the musical
-positions show note values:
+**TRACK + Reverb Size**: Reverb → Chorus I → Chorus II → Phaser → RAZR → **Hall → Room → Plate** (**new**, own
+algorithms in the style of the Dragonfly Reverbs). Stored per pattern.
 
-| Even | Dotted | Triplets |
-|---|---|---|
-| 1/1, 1/2, 1/4, 1/8, /16, /32, /64 | 2., 4., 8., 16., 32. | 1T, 2T, 4T, 8T, 16T |
-
-The stock OS cannot hit a triplet exactly, because it counts in 1/128 notes. At the five triplet positions the patch
-adds the missing fraction, so 1/8T really is an eighth-note triplet. All other values sound exactly as before.
-
-### 03 · Hold to mute ([details](docs/patches/03-hold-mute.md))
+### 03 · Delay Time as note values ([details](docs/patches/03-delay-notes.md))
 
 <img src="assets/titles/03.png" width="320" alt="">
 
-For quick drop-outs while the sequencer runs: **hold a pad T1–T6** for about 200 ms or longer, and its track is
-muted until you let go. It is the normal track mute: sequencer notes drop out, sounds that are ringing decay
-naturally.
+Delay Time shows note values (1/1 … 1/64, dotted, triplets), and the triplets are exact.
 
-- A short tap still plays the sound (on release).
-- If the track was already muted, it stays muted.
-- With the sequencer stopped, the pads play normally, on press.
-
-### 02 · Live mute ([details](docs/patches/02-live-mute.md))
+### 02 · Hold to mute ([details](docs/patches/02-hold-mute.md))
 
 <img src="assets/titles/02.png" width="320" alt="">
 
-On the stock OS a muted track still plays when you hit its pad or send it a MIDI note. With this patch a muted
-track stays silent for pads, the keyboard and incoming MIDI. Only note-on is dropped, so muting while a note is held
-cannot leave a hanging note. There is nothing to set: it works in every mute mode.
+Sequencer running: hold **T1–T6** = that track is muted until you let go. A tap plays the sound.
 
-### 01 · Solo ([details](docs/patches/01-mute-solo.md))
+### 01 · Mute: latching, solo and live notes ([details](docs/patches/01-mute-solo.md)) · `UPDATE v2.3.0`
 
 <img src="assets/titles/01.png" width="320" alt="">
 
-Solo one track for a moment, then go back to exactly the mutes you had before. Solo works in the **latching mute
-mode** from drumkilla's latching-mute patch, which the build always includes: hold **TRK** and tap **FUNC**, and the
-FUNC key lights up.
-
-- In the latching mode, **hold FUNC + press a track key**: that track plays, all others are muted.
-- The same again: your previous mutes come back.
-- FUNC + another track key while soloed: the solo moves to that track. Your mutes from before the first solo stay saved.
-- A track key without FUNC toggles that mute as usual and ends the solo.
+**TRACK + FUNC** latches the mute mode, **FUNC + track key** in that mode = solo (again =
+previous mutes back), and muted tracks stay silent for pads and MIDI too. **New:** all three in one patch.
 
 ## Controls overview
 
-| Feature | Control | Result |
+| Patch | Control | Result |
 |---|---|---|
-| 15 Direct jump | **PATTERN**, then **FUNC** + trig key | jump to that pattern now, keep the position; selection stays open |
-| 14 LFO Amount | hold **RETRIG** + turn **LFO SPEED** | how much of the LFO depth is used (0–127) |
-| 13 Track filter | hold **RETRIG** + press **GATE** · tap **RETRIG** | filter mode on · off |
-| 13 Track filter | in the filter mode: **PITCH** / **COLOR** / **SHAPE** / **DECAY** | cutoff / resonance / envelope depth / envelope decay |
-| 12 Fill 2 | hold **PAGE**, then also **FUNC** | Fill 2 instead of Fill 1 (also with TRACK + PAGE latched) |
-| 12 Fill 2 | trig conditions **FIL2** / **!FIL2** | play only in Fill 2 / play except in Fill 2 |
-| 11 Trig select | **SETTINGS + PAGE** | selection mode on / off |
-| 11 Trig select | in the mode: tap trigs · **FUNC + PAGE** | select / deselect · all / none |
-| 11 Trig select | with a selection: knobs · REC · STOP · PLAY | p-lock · copy · paste · clear locks for all selected |
-| 10 Control mode | hold **TRACK** + tap **SETTINGS** | CONTROL ALL relative ↔ absolute |
-| 09 Groove | hold **FUNC** + turn **Swing** | choose the groove |
-| 09 Groove amount | turn **Swing** | how much this track follows the groove |
-| 09 Humanize timing | hold **SETTINGS** + turn **Swing** | selected track, 0–100 |
-| 09 Humanize velocity | hold **MACHINE** + turn **Swing** | selected track, 0–100 |
-| 09 Humanize, all tracks | hold **TRACK** + **SETTINGS** / **MACHINE** + turn **Swing** | all six tracks at once |
-| 08 Load meter | hold **SETTINGS** + turn **REVERB SEND** | right = on, left = off |
-| 07 Strum | hold **SETTINGS** + turn **SHAPE** | −80…80 ms between chord notes |
-| 06 Delay FX | hold **TRACK** + turn **Delay Time** | Delay → Digital → VIBDEL → CHODEL |
-| 06 Mod delay speed | hold **SETTINGS** + turn **DELAY SEND** | VIBDEL / CHODEL speed |
-| 05 Reverb FX | hold **TRACK** + turn **Reverb Size** | Reverb → Chorus I → Chorus II → Phaser → RAZR |
-| 04 Delay notes | turn **Delay Time** | note values, exact triplets |
-| 03 Hold to mute | sequencer running: hold **T1–T6** | track muted until release |
-| 02 Live mute | mute a track | pads and MIDI notes stay silent too |
-| Latching mute (drumkilla) | hold **TRK**, tap **FUNC** | latching mute mode on (FUNC lights up) |
-| 01 Solo | latching mode: hold **FUNC** + track key | solo; again = previous mutes back |
+| 00 Core | hold **FUNC** + turn **DECAY** | amp attack |
+| 00 Core | **TRACK + T1–T6** | select the track |
+| 00 Core | browser: **RETRIG** | save menu |
+| 01 Mute | hold **TRACK**, tap **FUNC** · tap **FUNC** | latching mute mode on · off |
+| 01 Mute | latched mode: hold **FUNC** + track key | solo; again = previous mutes back |
+| 02 Hold to mute | sequencer running: hold **T1–T6** | track muted until release |
+| 03 Delay notes | turn **Delay Time** | note values, exact triplets |
+| 04 Reverb FX | hold **TRACK** + turn **Reverb Size** | Reverb → Chorus I → Chorus II → Phaser → RAZR → Hall → Room → Plate |
+| 05 Delay FX | hold **TRACK** + turn **Delay Time** | Delay → Digital → VIBDEL → CHODEL |
+| 05 Delay FX | hold **FUNC** + turn **DELAY SEND** | VIBDEL / CHODEL speed |
+| 06 Strum | hold **FUNC** + turn **SHAPE** · **COLOR** | strum time · strum pattern (CHORD / Vlvt tracks) |
+| 07 Load meter | hold **RETRIG** + press **BPM** | meter on / off |
+| 08 Groove | hold **FUNC** + turn **Swing** · turn **Swing** | groove · amount per track |
+| 08 Humanize | hold **SETTINGS** / **MACHINE** + turn **Swing** (+ **TRACK** = all) | timing / velocity |
+| 09 Control All | hold **TRACK** + tap **SETTINGS** | relative ↔ absolute |
+| 09 Control All | hold **TRACK** + trig **1–6** | add / remove a track |
+| 10 Trig select | **SETTINGS + PAGE** · in the mode: trigs · **FUNC + PAGE** | mode on / off · select · all / none |
+| 11 Fill 2 | hold **PAGE**, then also **FUNC** | Fill 2 |
+| 12 Track filter | hold **RETRIG** + press **GATE** · tap **RETRIG** | filter mode on · off |
+| 12 Track filter | filter mode: **PITCH** / **COLOR** / **SHAPE** / **DECAY** | cutoff / resonance / env amount / env decay |
+| 12 Track filter | hold **GATE** + press **PLAY** | filter reset of the track |
+| 13 LFO Amount | hold **RETRIG** + turn **LFO SPEED** | LFO amount 0–127 |
+| 14 Direct jump | **PATTERN**, then **FUNC** + trig | jump now, keep the position |
+| 15 Grit | **COLOR** / **SHAPE** / **CONTOUR** · **FUNC + COLOR** · **PUNCH** / **GATE** | start / length / model · move both · loop / reverse |
+| 16 Vlvt | **SHAPE** / **COLOR** / **SWEEP** / **CONTOUR** | chord / 8'-4' mix / tone / ensemble |
+| 17 Monom | **COLOR** / **SHAPE** / **SWEEP** / **CONTOUR** · **FUNC + PITCH** / **CONTOUR** | wave / timbre / sub / drive · glide / noise |
+| 18 Param undo | **BACK** while the value popup shows | undo (3x longer) |
+| 19 Pad mode | hold **TRACK + RETRIG** (+ trig **1–6**) | show (switch) pad tracks |
 
 What is saved where, and all controls with their parameters: [docs/USER_GUIDE.md](docs/USER_GUIDE.md) ·
 Version history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
@@ -319,31 +224,33 @@ Version history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
 A firmware file contains Elektron's operating system, which I am not allowed to redistribute. This repository only
 holds **my own code**: the bytes each patch writes, plus a SHA-256 checksum of the original bytes it replaces. No
 Elektron code is in here. Where a hook has to move a few original instructions into a patch's own code, the patch
-file holds only a placeholder and a checksum; the build tool copies those bytes from your own firmware file. You
-build the firmware from your own copy of the official file. The build checks every single write, and also the
-complete result against a published checksum.
+file holds only a placeholder and a checksum; the build tool copies those bytes from your own firmware file.
+You build the
+firmware from your own copy of the official file, in the [flasher](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/flasher/)
+or with the build tool. The build checks every single write, and also the complete result against a published
+checksum.
 
 ## Build it
 
-You need Python 3, the official `model-cycles_OS1.13.syx` from elektron.se, and a checkout of
-[drumkilla/elektron-model-tweaks](https://github.com/drumkilla/elektron-model-tweaks). That checkout supplies the
-firmware container code and the latching-mute patch that Solo builds on.
+You need Python 3 and the official `model-cycles_OS1.13.syx` from elektron.se — nothing else. The firmware container
+code comes with the repository (`tools/vendor/`: unchanged MIT copies from drumkilla's elektron-model-tweaks and
+Modded-Cycles, so the build keeps working even if those repositories change).
 
 ```sh
-git clone https://github.com/drumkilla/elektron-model-tweaks
-python3 tools/build.py --tweaks elektron-model-tweaks --in model-cycles_OS1.13.syx --out cycles-mods
+git clone https://github.com/gialloinfuso/PPPCCC-M-S-Mods
+cd PPPCCC-M-S-Mods
+python3 tools/build.py --in model-cycles_OS1.13.syx --out cycles-mods
 # -> cycles-mods_cyc-os.syx
 ```
 
-To install only some features, name them; the core is added when a patch needs it:
+To install only some features, name them; the core and the other patches a patch needs are added:
 
 ```sh
-python3 tools/build.py --tweaks elektron-model-tweaks --in model-cycles_OS1.13.syx --out my-mods \
-        live-mute reverb-fx trig-select
+python3 tools/build.py --in model-cycles_OS1.13.syx --out my-mods mute-solo reverb-fx track-filter
 ```
 
-For a **Model:Samples** you first make the Cycles OS for the Samples with Modded-Cycles' cross-flash tool, then
-build from that file. Both are covered in [docs/BUILD.md](docs/BUILD.md).
+For a **Model:Samples** you first make the Cycles OS for the Samples with Modded-Cycles' cross-flash tool (also in
+`tools/vendor/`), then build from that file. Both are covered in [docs/BUILD.md](docs/BUILD.md).
 
 As with any firmware mod: **use at your own risk**. The start-up menu (hold **FUNC** at power-on) can always bring
 back an official OS.
@@ -352,26 +259,40 @@ back an official OS.
 
 ```
 patches/   one JSON per patch (offsets, new bytes, SHA-256 of the original bytes) + manifest.json
-tools/     build.py (.syx -> .syx), apply_patches.py (MAIN OS image -> image)
+tools/     build.py (.syx -> .syx), apply_patches.py (MAIN OS image -> image),
+           vendor/ (container code from elektron-model-tweaks and Modded-Cycles, MIT, unchanged)
 docs/      user guide, build guide, technical reference, changelog, one page per patch
 grooves/   the groove tables (grooves.json)
-src/       the generators that produce the ColdFire code (comments in German), regen.py
+src/       the generators: readable ColdFire assembler in Python (comments in German), regen.py
 tests/     the emulator tests (run_all.py)
-assets/    title images, demo pictures and sound demos (README and project page)
+assets/    title images (README and project page)
 ```
 
-You do not need `src/` or `tests/` to build the firmware. They are here for transparency, and so others can
-check the work and build on it. See [docs/TECHNICAL.md](docs/TECHNICAL.md).
+You do not need `src/` or `tests/` to build the firmware. They are here for transparency, and so others can check the
+work and build on it. See [docs/TECHNICAL.md](docs/TECHNICAL.md) and [src/README.md](src/README.md).
 
 ## Credits
 
-- **Latching mute** is by **drumkilla** ([elektron-model-tweaks](https://github.com/drumkilla/elektron-model-tweaks), MIT).
-  The solo extension (patch 01) is mine and needs it.
-- Firmware research, the emulator rigs, the sprite-mask method for free memory and the cross-flash for the Model:Samples
-  come from [Modded-Cycles](https://github.com/18nelli18/Modded-Cycles) (MIT).
-- More in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+This project stands on the work of others. Thank you!
+
+- **drumkilla** ([elektron-model-tweaks](https://github.com/drumkilla/elektron-model-tweaks), MIT): the **latching mute**
+  (part of patch 01) and the **scrolling browser names** (part of the core), rebuilt here with the same behaviour; the
+  firmware container code (`mtlib`, included in `tools/vendor/`); the idea of playing a step (trig-preview) used by pad
+  mode.
+- **18nelli18 and the Modded-Cycles contributors** ([Modded-Cycles](https://github.com/18nelli18/Modded-Cycles), MIT):
+  firmware research notes, the emulator rigs, the sprite-mask method for free memory, the compression of a longer MAIN
+  OS and the cross-flash for the Model:Samples (both included in `tools/vendor/`). The multi-line browser and the volume / pan numbers of the core are
+  ports of their `multiline-browser` and `level-pan-values` (the latter after a mod by djd_oz), rewritten here.
+- **durchgemacht** ([model27](https://durchgemacht.github.io/model27/), MIT): the idea of the CONTROL ALL track
+  selection (patch 09) and the loading guards of its sampler.
+- **TinyGregAudio** (Model-TG, MIT): the idea of the amp attack and the Transfer identity switch of Grit.
+- **jpcima** (string-machine) after the model by **Peter Whiting**: the inspiration for Vlvt.
+- The **Dragonfly Reverbs** and Jon Dattorro's plate: the inspiration for Hall, Room and Plate.
+- **Vadim Zavalishin** (*The Art of VA Filter Design*): the filter structure of the track filter.
+- All code in this repository is my own; nothing was copied from these projects. Details in
+  [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## License
 
-My code, patches, documentation and groove tables: MIT, see [LICENSE](LICENSE). Elektron's firmware is not covered by
-this license and is not included.
+My code, patches, documentation and groove tables: MIT, see [LICENSE](LICENSE). The files in `tools/vendor/` keep
+their own MIT licenses (next to them). Elektron's firmware is not covered by these licenses and is not included.
