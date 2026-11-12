@@ -64,14 +64,15 @@ The "old → new" popup after turning a knob stays three times as long, so **BAC
 
 A 9th machine in the spirit of the SH-101, Minimoog, Pro-One and MS-20, warm and imperfect. **COLOR** = wave (SAW, SQR,
 PWM, S+P, TRI, SYNC, DTN, RING), **SHAPE** = timbre, **SWEEP** = sub oscillator, **CONTOUR** = drive, **FUNC + PITCH** =
-glide, **FUNC + CONTOUR** = noise. Drift, random detune and free-running phases. Use the track filter (12) as its filter.
+glide, **FUNC + CONTOUR** = noise, **GATE** as on TONE. Drift, random detune and free-running phases. Use the track filter
+(12) as its filter.
 
 ### 16 · Vlvt: string machine ([details](docs/patches/16-strings.md)) · `NEW v2.3.0` · needs core, 15
 
 <img src="assets/titles/16.png" width="320" alt="">
 
 An 8th machine: a string ensemble in the style of a Solina. **SHAPE** = chord (the CHORD list, plus mono and unison),
-**COLOR** = 8' / 4' mix, **SWEEP** = tone, **CONTOUR** = ensemble. Strummed with patch 06.
+**COLOR** = 8' / 4' mix, **SWEEP** = tone, **CONTOUR** = ensemble, **GATE** as on CHORD. Strummed with patch 06.
 
 ### 15 · Grit: sampler machine ([details](docs/patches/15-sampler.md)) · `NEW v2.3.0` · needs core
 

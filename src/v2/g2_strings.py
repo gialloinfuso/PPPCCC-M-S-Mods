@@ -178,11 +178,10 @@ def code_text(S):
             movem.l d2-d7/a2-a6,(sp)
             movea.l 52(sp),a2
             movea.l 56(sp),a3
-            mvs.b   36(a3),d0                ; Amp-Decay wie TONE, kein Gate
+            mvs.b   36(a3),d0                ; Amp-Decay wie TONE; smp44: GATE (+0x24c, von der Stimmen-Schleife) bleibt
             lea     {k['DECLUT']},a0
             move.l  0(a0,d0.l*4),d1
             move.l  d1,0x250(a2)
-            clr.l   0x24c(a2)
             jsr     STATE                    ; a4 = Zustand der Spur (erster Gebrauch: leer)
             tst.l   0x38(a2)                 ; Trig: Strum-Zaehler von vorn, Reihenfolge aus dem Pattern
             beq     u1
@@ -422,8 +421,9 @@ def code_text(S):
             rts
     ; smp24: Huellkurve von Ton d6 (Stapel des Aufrufers +4: 20 n, 24 Abstand in 1/8 Bloecken) -> d0 (Q31). Rang = Zahl der Toene
     ; i < n mit PERM[i] < PERM[j] (fehlende uebersprungen), Einsatz = (Rang x Abstand) >> 3 Bloecke. Ab dem Einsatz: Attack
-    ; (k 23; 0 = sofort, spaetere Einsaetze 1/4, 1/2, voll), dann Decay mit dem Faktor der Firmware (DECLUT, Stimme +0x250).
-    ; Vlvt hat kein GATE (wie bisher). Zerstoert d0-d4, a0 (d5 / d7 / a5 bleiben)
+    ; (k 23; 0 = sofort, spaetere Einsaetze 1/4, 1/2, voll), dann Halten (smp44: GATE, bis losgelassen; wie CHORD mit Strum),
+    ; dann Decay mit dem Faktor der Firmware (DECLUT, Stimme +0x250). Stufen T_STG: 0 Attack, 1 Halten, 2 Decay.
+    ; Zerstoert d0-d4, a0 (d5 / d7 / a5 bleiben)
     RAMP:   lea     {k['T_PERM']}(a4),a0
             mvz.b   0(a0,d6.l),d3            ; PERM[j]
             moveq   #0,d0                    ; Rang
@@ -442,9 +442,18 @@ def code_text(S):
             sub.l   d0,d1                    ; Bloecke seit dem Einsatz
             bmi     rpz
             lea     {k['T_STG']}(a4),a0
-            tst.b   0(a0,d6.l)
+            mvz.b   0(a0,d6.l),d0
             beq     rpa
-            lea     {k['T_ENV']}(a4),a0      ; Decay
+            subq.l  #1,d0
+            bne     rpd
+            jsr     VHELD                    ; Halten: solange gehalten, Pegel bleibt; sonst ab dem naechsten Block Decay
+            bne     rph
+            moveq   #2,d0
+            move.b  d0,0(a0,d6.l)
+    rph:    lea     {k['T_ENV']}(a4),a0
+            move.l  0(a0,d6.l*4),d0
+            bra     rpq
+    rpd:    lea     {k['T_ENV']}(a4),a0      ; Decay
             move.l  0(a0,d6.l*4),d0
             jsr     VEMUL
             move.l  d0,0(a0,d6.l*4)
@@ -500,9 +509,24 @@ def code_text(S):
     vfl:    move.l  #0x80000000,d0
             move.l  d0,0(a0,d6.l*4)
             lea     {k['T_STG']}(a4),a0
-            moveq   #2,d0
-            move.b  d0,0(a0,d6.l)
+            jsr     VHELD
+            moveq   #2,d1
+            sub.l   d0,d1                    ; 1 Halten, 2 Decay
+            move.b  d1,0(a0,d6.l)
             move.l  #0x7fffffff,d0
+            rts
+    ; smp44: d0 = 1 (ne), solange der Ton gehalten wird: GATE der Stimme (+0x24c) und noch nicht losgelassen (Stufe der Firmware
+    ; +0x23c != 1; im Trig-Block gilt gehalten), sonst 0 (eq). Wie HELDQ von CHORD (patch 06). Benutzt d0.
+    VHELD:  tst.l   0x24c(a2)
+            beq     vh0
+            tst.l   {k['T_BLK']}(a4)
+            beq     vh1
+            moveq   #1,d0
+            cmp.l   0x23c(a2),d0
+            beq     vh0
+    vh1:    moveq   #1,d0
+            rts
+    vh0:    moveq   #0,d0
             rts
     vst:    move.l  d0,0(a0,d6.l*4)
             rts
@@ -1035,7 +1059,7 @@ def tweak(img):
                  memory=[{"va": f"{ORG:#x}", "size": len(blob), "ram": True, "use": "payload slot 'strings' (code, tables)"},
                          {"va": f"{RAM:#x}", "size": 6 * TSTR, "ram": True, "use": "state + ensemble ring per track"}],
                  symbols={kk: f"{lab[kk]:#x}" for kk in ('RAT2', 'ROF2', 'KV2', 'MIMG2', 'VBM', 'VICON', 'REC9', 'R9', 'SUPD8', 'SRND8', 'STATE',
-                                                         'PITCH', 'CHORD', 'RAMP', 'VATK', 'VEMUL', 'SSTEP', 'SPERM', 'FILT', 'ENSU', 'SINQ', 'OSC', 'LPF', 'OUT4', 'ENS',
+                                                         'PITCH', 'CHORD', 'RAMP', 'VATK', 'VHELD', 'VEMUL', 'SSTEP', 'SPERM', 'FILT', 'ENSU', 'SINQ', 'OSC', 'LPF', 'OUT4', 'ENS',
                                                          'ROWS8', 'VEC8', 'NAMES8', 'UPD8', 'RND8', 'P12', 'SINT', 'COLT',
                                                          'SVFT', 'ENST', 'UNIT', 'GNT')},
                  params={"machine": MACH, "ram": f"{RAM:#x}", "tstride": TSTR, "state": {kk: v for kk, v in T.items()},

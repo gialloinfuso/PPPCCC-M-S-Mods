@@ -17,6 +17,7 @@ imperfect. Use the track filter (patch 12) as its filter. Needs Grit and Vlvt (p
 | **FUNC + PITCH** | Glide (from the last note, on every trig). |
 | **FUNC + CONTOUR** | Noise. |
 | **DECAY** / **FUNC + DECAY** | Amp decay / attack. |
+| **GATE** key | Gate on: the note holds at full level while the trig (or the MIDI note) lasts, then decays — as on TONE. |
 
 ## Good to know
 
@@ -35,19 +36,19 @@ With the sound, like every parameter (glide and noise via the core's sound slot)
 
 The machine limits are raised from 8 to 9; Monom gets six descriptors in the core's table (four on the machine
 knobs, glide and noise as FUNC extras like attack). The sound runs per track in 32-sample blocks; code and tables live
-in the core's payload area.
+in the core's payload area. The amp envelope is the firmware's, with its gate as on TONE.
 
 ### Hooks and memory
 
 Addresses are virtual addresses of the OS 1.13 MAIN OS (file offset + 0x40000400).
 
 - Hooks (original instruction or vtable entry replaced): `0x4005a6a6`, `0x400147a4`, `0x400148aa`, `0x400148b2`, `0x400a25e0`, `0x400a7dba`, `0x400a7df4`, `0x400a26e8`, `0x400a26e6`, `0x400a7dc4`, `0x4010e5e4`, `0x4005a2be`, `0x4005a322`, `0x4005a390`, `0x4005a6ba`, `0x4005a6f0`, `0x400a2614`, `0x400a7d6c`, `0x400a7e16`, `0x4004df5c`, `0x4004df76`, `0x4001e8da`, `0x400a2638`
-- RAM: `0x4300e000` (7940 B, payload slot 'mono' (code, tables)), `0x431a0000` (3072 B, state per track)
+- RAM: `0x4300e000` (7936 B, payload slot 'mono' (code, tables)), `0x431a0000` (3072 B, state per track)
 
 ## Source and tests
 
 - Generator: `src/v2/g2_mono.py` (model: mono_model.py, constants: mono_tables.py)
-- Tests: `test_mono.py`: every wave against a floating-point model (`mono_model.py`), glide, noise, drive, drift, aliasing.
+- Tests: `test_mono.py`: every wave against a floating-point model (`mono_model.py`), glide, noise, drive, drift, aliasing; GATE with the real envelope of the firmware (hold until release).
 
 ## Status
 

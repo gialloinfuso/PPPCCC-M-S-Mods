@@ -332,9 +332,9 @@ firmware's delay line (`0x4a400000`), which the stock delay does not reach.
 | `0x43000000` | 20996 | RAM | 04 reverb-fx | payload (code, tables), copied at start |
 | `0x43000000` | 65536 | RAM | 00 core | payload (slots: reverb-fx +0x0, control-mode +0x7000, pad-mode +0x7800, strings +0x8000, sampler +0xb000, core +0xc000, mono +0xe000), copied at start |
 | `0x430077fc` | 1 | RAM | 09 control-mode | Control All track selection (0 at start = all tracks) |
-| `0x43008000` | 9278 | RAM | 16 strings | payload slot 'strings' (code, tables) |
+| `0x43008000` | 9350 | RAM | 16 strings | payload slot 'strings' (code, tables) |
 | `0x4300be00` | 512 | RAM | 15 sampler | loaded samples (payload) |
-| `0x4300e000` | 7940 | RAM | 17 mono | payload slot 'mono' (code, tables) |
+| `0x4300e000` | 7936 | RAM | 17 mono | payload slot 'mono' (code, tables) |
 | `0x43100000` | 1024 | RAM | 04 reverb-fx | Hall / Room / Plate state |
 | `0x43110000` | 102912 | RAM | 04 reverb-fx | Hall / Room / Plate delay lines |
 | `0x43180000` | 27648 | RAM | 16 strings | state + ensemble ring per track |

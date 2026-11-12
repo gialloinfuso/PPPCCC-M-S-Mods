@@ -20,8 +20,8 @@ Live mute is now part of 01, so every later patch moved down by one; there are f
 - **15 Grit:** a 7th machine, a sampler in the style of the Model:Samples with six models (CLEAN, SP, LM, MIRAGE, TX16W, MPC60). Samples from
   the +Drive, chosen in the browser; start, length, loop, reverse; waveform while turning; sample locks lock only the
   sample; samples can be uploaded with Elektron Transfer (Device Config > Transfer: SMP).
-- **16 Vlvt:** an 8th machine, a Solina-style string ensemble (chords like CHORD, 8' / 4' mix, tone, ensemble).
-- **17 Monom:** a 9th machine, a warm, imperfect monophonic synth (8 waves, sub, drive, glide, noise).
+- **16 Vlvt:** an 8th machine, a Solina-style string ensemble (chords like CHORD, 8' / 4' mix, tone, ensemble, GATE).
+- **17 Monom:** a 9th machine, a warm, imperfect monophonic synth (8 waves, sub, drive, glide, noise, GATE).
 - **18 Parameter undo:** the "old → new" popup (BACK = undo) stays three times as long.
 - **19 Pad mode:** pad tracks are not played by the sequencer; the trig keys and MIDI notes 36–51 play their steps.
   TRACK + RETRIG (+ trig 1–6).

@@ -67,7 +67,8 @@ Delay slot (hold **TRACK** + turn **Delay Time**, 4 detents per step), [05](patc
 | **Vlvt** (8th) | pitch | amp decay | 8' / 4' mix | chord | tone | ensemble | SHAPE / COLOR = strum | [16](patches/16-strings.md) |
 | **Monom** (9th) | pitch | amp decay | wave | timbre | sub | drive | PITCH = glide, CONTOUR = noise | [17](patches/17-mono.md) |
 
-On every machine **FUNC + DECAY** = attack (core). Grit: choose samples with **FUNC + MACHINES** (browser); upload them
+On every machine **FUNC + DECAY** = attack (core). **GATE** works on Vlvt and Monom as on CHORD and TONE (hold while the
+trig or note lasts); on Grit it is reverse. Grit: choose samples with **FUNC + MACHINES** (browser); upload them
 with Elektron Transfer after switching Device Config > Transfer to SMP (every start begins with CYC). Grit, Vlvt and
 Monom only work together.
 

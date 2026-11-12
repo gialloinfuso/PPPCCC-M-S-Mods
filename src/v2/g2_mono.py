@@ -192,11 +192,10 @@ def code_text(k):
             movem.l d2-d7/a2-a6,(sp)
             movea.l 52(sp),a2
             movea.l 56(sp),a3
-            mvs.b   36(a3),d0                ; Amp-Decay wie TONE, kein Gate
+            mvs.b   36(a3),d0                ; Amp-Decay wie TONE; smp44: GATE (+0x24c, von der Stimmen-Schleife) bleibt wie bei TONE
             lea     {k['DECLUT']},a0
             move.l  0(a0,d0.l*4),d1
             move.l  d1,0x250(a2)
-            clr.l   0x24c(a2)
             jsr     MSTATE
             tst.l   0x38(a2)
             beq     mu1

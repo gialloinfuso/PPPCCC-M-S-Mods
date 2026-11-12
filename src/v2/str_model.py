@@ -54,7 +54,7 @@ class Voice:
     def r32(s, va): return struct.unpack('>I', s.stock[va - G.BASE:va - G.BASE + 4])[0]
 
     # ---------------- update
-    def update(s, par, pmod, trig, tempo=14400, perm=None):
+    def update(s, par, pmod, trig, tempo=14400, perm=None, gate=0, fst=0):
         """par: dict k -> Wort (Slots 10..18, Strum 24 / 27). perm: Raenge fuer RND (sonst aus dem Pattern)"""
         if trig:
             s.blk = 0
@@ -72,6 +72,7 @@ class Voice:
         dec = dec - 256 if dec > 127 else dec
         s.m = s.r32(SM.DECLUT + 4 * dec)                       # Faktor der Firmware (SUPD8 -> Stimme +0x250)
         s.atk = (par.get(C.K_EXT0, 0) >> 8) & 0xFF
+        s.held = gate != 0 and (s.blk == 0 or fst != 1)         # smp44: GATE der Stimme (+0x24c), Stufe der Firmware (+0x23c)
         s.chord(par, inc0, C.strum_step8((par.get(C.K_STIME, 0) >> 8) & 0xFF, tempo))
         s.filt(par)
         s.ensu(par)
@@ -131,6 +132,9 @@ class Voice:
         if d < 0:
             e = s.env[j] - (s.env[j] >> 2); s.env[j] = e if e >= C.STRUM_FADE_MIN else 0   # smp39: ausblenden statt 0
             s.stg[j] = 0; return s.env[j]
+        if s.stg[j] == 1:                                      # smp44: Halten (GATE)
+            if not s.held: s.stg[j] = 2
+            return min(s.env[j], 0x7FFFFFFF)
         if s.stg[j]:
             f = (-s.m) & M; e = s.env[j]
             eh, el, fh, fl = e >> 16, e & 0xFFFF, f >> 16, f & 0xFFFF
@@ -149,7 +153,7 @@ class Voice:
                 if x >= 1 << 31: full = True
                 else: s.env[j] = x
         if full:
-            s.env[j] = 1 << 31; s.stg[j] = 2; return 0x7FFFFFFF
+            s.env[j] = 1 << 31; s.stg[j] = 1 if s.held else 2; return 0x7FFFFFFF
         return s.env[j]
 
     def filt(s, par):

@@ -222,7 +222,8 @@ ST = lambda tm, pat=0: {C.K_STIME: tm << 8, C.K_SPAT: pat << 8}                 
 RAMS = lambda t: 0x43180000 + 0x1200 * t                                         # Zustand der Spur (G.RAM, G.TSTR)
 
 
-def vloop(img, blocks, par=None, notes=None, trig_at=(1,), tempo=14400, per_block=None, machines=(7, 7, 7, 7, 7, 7), count_ins=False, perms=None):
+def vloop(img, blocks, par=None, notes=None, trig_at=(1,), tempo=14400, per_block=None, machines=(7, 7, 7, 7, 7, 7), count_ins=False, perms=None,
+          fst=None, g24c=None):
     e = boot(img, emac=True)
     caught = {t: [] for t in range(6)}
     for t_ in (SM.AMPENV, SM.VCA):
@@ -253,17 +254,20 @@ def vloop(img, blocks, par=None, notes=None, trig_at=(1,), tempo=14400, per_bloc
             for k, v in kv.items():
                 if k == 'note': e.w32(PMOD + 4 * t, v)
                 else: e.u.mem_write(PAR + 14 + 66 * t + 2 * k, struct.pack('>H', v & 0xffff))
+        if fst is not None:                                                 # smp44: Stufe der Firmware (+0x23c; AMPENV ist gestummt)
+            for t in range(6): e.w32(0x42308828 + 0x31C * t + 0x23C, fst(b))
         e.mac.macsr = 0xA0
         n0 = n_ins[0]
         d0, good = e.call(0x400A7D4A, OUT, PAR, trig, 0, count=4000000)
         cnt.append(n_ins[0] - n0)
         assert good
+        if g24c is not None: g24c.append([e.r32(0x42308828 + 0x31C * t + 0x24C) for t in range(6)])
         if perms is not None and b >= 1:                                    # Raenge nach dem Block (RND: was der Code gemischt hat)
             for t in range(6): perms[t].append(list(e.u.mem_read(RAMS(t) + G.T['PERM'], 4)))
     return e, caught, cnt
 
 
-def model_run(blocks, par=None, notes=None, trig_at=(1,), tempo=14400, per_block=None, track=0, perms=None):
+def model_run(blocks, par=None, notes=None, trig_at=(1,), tempo=14400, per_block=None, track=0, perms=None, fst=None):
     v = SMOD.Voice(STOCK, track)
     pr = dict(DEF); pr.update((par or {}).get(track, {}))
     note = (notes or {}).get(track, 60 << 16)
@@ -275,7 +279,9 @@ def model_run(blocks, par=None, notes=None, trig_at=(1,), tempo=14400, per_block
         if b == 0: continue
         # Die Stimmen-Schleife legt den Trig-Wunsch eines Blocks erst im naechsten Block an die Stimme (+0x38): Block 0 (Wechsel
         # der Maschine) -> Trig in Block 1, Wunsch in b >= 2 -> Trig in b + 1 (der Pruefstand setzt in Block 1 keinen Wunsch)
-        v.update(pr, note, b == 1 or (b - 1 >= 2 and (b - 1) in trig_at), tempo, perms[track][b - 1] if perms else None)
+        g = (pr.get(16, 0) >> 8) & 0xFF; g = g - 256 if g > 127 else g
+        v.update(pr, note, b == 1 or (b - 1 >= 2 and (b - 1) in trig_at), tempo, perms[track][b - 1] if perms else None,
+                 g, fst(b) if fst else 0)
         out.append(v.render())
     return out, v
 
@@ -326,6 +332,24 @@ cmp('Wechsel im Spiel: SHAPE 37 -> 0 -> 20, COLOR, SWEEP, CONTOUR 0 -> 127 -> 0,
     per_block={10: {t: {12: 0x2500} for t in range(6)}, 25: {t: {12: 0, 11: 0x7F00, 14: 0x7F00} for t in range(6)},
                40: {t: {12: 0x1400, 13: 0x0000, 'note': 48 << 16} for t in range(6)}, 55: {t: {14: 0, 13: 0x7F00} for t in range(6)}})
 # Vollaussteuerung: 4 Toene gleichphasig ist nicht moeglich (Phasen versetzt); hohe Werte fuer alles -> keine Spruenge
+# smp44: GATE (Byte 32 = k 16): Akkordtoene halten nach dem Attack, bis die Firmware loslaesst (Stufe +0x23c = 1), dann Decay
+REL = lambda r: (lambda b: 1 if b >= r else 2)
+g24 = []
+vloop(IMG, 4, par={t: {16: (t & 1) << 8} for t in range(6)}, g24c=g24)
+chk('smp44 GATE: die Stimmen-Schleife legt GATE an die Stimme (+0x24c), Vlvt loescht es nicht mehr: %s' % g24[-1], [x != 0 for x in g24[-1]] == [False, True] * 3)
+cmp('smp44 GATE an, Decay 20, Strum 30 UP, losgelassen bei 60', 120, par={t: {**ST(30, 0), 16: 0x100, 18: 0x1400} for t in range(6)}, fst=REL(60))
+cmp('smp44 GATE an, Attack 40, Decay 90, Strum 12 DOWN, los bei 50, neuer Trig 70 (Stufe 0), los bei 100', 140,
+    par={t: {**ST(12, 1), 16: 0x100, C.K_EXT0: 0x2800, 18: 0x5A00} for t in range(6)}, trig_at=(1, 70),
+    fst=lambda b: 1 if 50 <= b < 71 or b >= 100 else (0 if b in (71, 72) else 2))
+cmp('smp44 GATE an, ohne Strum, nie losgelassen', 80, par={t: {16: 0x100, 18: 0x1400} for t in range(6)}, fst=lambda b: 2)
+cmp('smp44 GATE an, Strum 1/16 (Wert 126), losgelassen im Strum (Block 3)', 60, par={t: {**ST(126, 0), 16: 0x100, 18: 0x2000} for t in range(6)},
+    fst=REL(3))
+cmp('smp44 GATE an im Spiel ein / aus (p-lock), Decay 30', 100, par={t: {18: 0x1E00} for t in range(6)}, trig_at=(1, 40, 70),
+    per_block={30: {t: {16: 0x100} for t in range(6)}, 60: {t: {16: 0} for t in range(6)}}, fst=REL(55))
+_, cg, _ = vloop(IMG, 80, par={t: {16: (t & 1) << 8, 18: 0x1400} for t in range(6)}, fst=lambda b: 2)
+lv = lambda t, b: max(abs(x) for x in cg[t][b])
+chk('smp44 GATE haelt: Block 70 Spur ohne GATE %.4f, mit GATE %.4f (Block 10: %.4f / %.4f)' % (lv(0, 70) / 2 ** 31, lv(1, 70) / 2 ** 31,
+    lv(0, 10) / 2 ** 31, lv(1, 10) / 2 ** 31), lv(1, 70) > 0.6 * lv(1, 10) and lv(0, 70) < 0.25 * lv(0, 10))
 cc = cmp('Vollaussteuerung: Fifths, Note 108, COLOR 64, SWEEP 127, CONTOUR 127', 40,
          par={t: {12: 0x2500, 11: 0x4000, 13: 0x7F00, 14: 0x7F00} for t in range(6)}, notes={t: 108 << 16 for t in range(6)})
 # Bloecke: keine Unstetigkeit an den Grenzen (2. Differenz an der Grenze nicht groesser als im Block)

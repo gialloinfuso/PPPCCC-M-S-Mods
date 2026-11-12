@@ -283,6 +283,32 @@ def dispatch(img):
     return tr
 t1, t0 = dispatch(IMG), dispatch(REF)
 chk('Stimmen-Schleife, Maschinen 0..7 (auch Wechsel): %d Aufrufe wie ohne mono' % len(t1), t1 == t0 and len(t1) == 9 * 12)
+# smp44: GATE (Byte 32 = k 16) wie bei TONE: echte Huellkurve der Firmware (AMPENV, Stufen 0 Attack, 2 Halten, 1 Decay); Spuren
+# ohne / mit GATE im Wechsel; Loslassen (4. Argument der Stimmen-Schleife) bei Block 40; Spur 5: Decay 127
+def gate_run(img):
+    e = boot(img, emac=True)
+    for f in [SM.VCA] + list(SM.UPD_ORIG + SM.RND_ORIG): e.u.mem_write(f, b'\x4e\x75')
+    for t in range(6):
+        vals = dict(DEF); vals[9] = 8 << 8; vals[16] = (t & 1) << 8; vals[18] = 0x7F00 if t == 5 else 0x1400
+        for k, v in vals.items(): e.u.mem_write(PAR + 14 + 66 * t + 2 * k, struct.pack('>H', v & 0xffff))
+        e.w32(PMOD + 4 * t, 48 << 16)
+    st, ev = [], []
+    for b in range(90):
+        e.mac.macsr = 0xA0
+        _, good = e.call(0x400A7D4A, OUT, PAR, 0x3F if b in (0, 2) else 0, 0x3F if b == 40 else 0, count=4000000); assert good
+        st.append([e.r32(0x42308828 + 0x31C * t + 0x23C) for t in range(6)])
+        ev.append([e.r32(0x42308828 + 0x31C * t + 0x230) for t in range(6)])
+    return st, ev
+st, ev = gate_run(IMG)
+col = lambda x, t: [r[t] for r in x]
+chk('smp44 GATE: Stufen der Firmware-Huellkurve ohne GATE %s, mit GATE %s ... (Halten bis zum Loslassen)' % (''.join(map(str, col(st, 0)[:8])),
+    ''.join(map(str, col(st, 1)[:8]))), col(st, 0) == col(st, 2) == col(st, 4) and col(st, 1) == col(st, 3) == col(st, 5)
+    and set(col(st, 0)[3:]) == {1} and set(col(st, 1)[3:40]) == {2} and set(col(st, 1)[42:]) == {1})
+h = [b for b in range(90) if st[b][1] == 2]
+chk('smp44 GATE: Monom haelt voll (Stufe 2) von Block %d bis %d, danach Decay; ohne GATE ab Block %d Decay; Pegel bei 39 mit / ohne GATE: %.3f / %.3f'
+    % (h[0], h[-1], col(st, 0).index(1), ev[39][1] / 2 ** 31, ev[39][0] / 2 ** 31),
+    h and h[-1] <= 41 and h[-1] >= 39 and all(ev[b][1] == 0x80000000 for b in h) and ev[60][1] < ev[41][1] and ev[39][0] < ev[39][1] // 4
+    and col(ev, 0) == col(ev, 2))
 for wv in (0, 2, 5, 7):
     _, _, cnt = vloop(6, par={t: {11: wv << 8, 13: 0x4000, 27: 0x2000} for t in range(6)}, count_ins=True)
     per = max(cnt[2:]) / 6
