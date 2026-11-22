@@ -16,6 +16,11 @@ Klang: Byte fuer Byte wie v1 (Schleifen gen_digidelay_113 / gen_moddelay_113). G
 Speicher: 0x40185f48 (Digital-Schleife), 0x40160e6c (Digital-Setup), 0x4018a788 (Mod-Schleife), 0x401904b4 (Mod-Setup),
   0x4018fc74 (MD, DSYNC, W2, TC), 0x40160864 (Namen), 0x40160b6c (Handler + Texte).
 RAM: Digital 0x4233c140 (20 B), Mod 0x4233c320 (56 B), DMIR 0x4233c3fd, SMIR 0x4233c3fe; Zeile 0x4a400000 (obere Haelfte).
+smp46 (Last): VIBDEL/CHODEL (smp47: auch Digital) lesen die Zeile ueber den gecachten Alias LINE_C (0x42400000, gleicher Speicher), Schreiben
+  weiter ungecacht (Speicher immer aktuell, DMA/Umschalten wie vorher). Gleiche Werte: jeder Lesekopf liegt >= 32 Frames
+  hinter dem Schreibkopf, eine Cache-Zeile (2 Frames) enthaelt nur fertige Frames; veralten koennte sie erst nach einem
+  ganzen Umlauf des Rings (>= 8192 Frames bei schnellstem Gleiten), so lange bleibt keine Zeile im Cache (8 KB).
+  Vorher 6 (CHODEL) / 3 (VIBDEL, Digital) ungecachte Zugriffe je Frame, jetzt 1 (Digital 2: L und R).
 Aufruf: g2_delayfx.py [out.json]
 """
 import struct, sys
@@ -35,6 +40,7 @@ STOCK, WRITE_DMA, DSP = fx.STOCK, fx.WRITE_DMA, 0x400581B8
 DSTATE, DMAGIC = dd.DSTATE, fx.DMAGIC
 DMIR, SMIR = 0x4233C3FD, 0x4233C3FE
 DMAX, B_DIG, B_VIB, B_CHO = 3, 1, 2, 3
+LINE_C = fx.LINE - 0x08000000                 # smp46: gecachter Alias der Zeile (0x42400000)
 SPD_X = 64                                    # gespeichert: Speed XOR 64 (neues Pattern = 64)
 # smp22 (Pip 04.11.): Anzeige 'ViDel' / 'ChDel' statt VIBDEL / CHODEL (kurz 'ViDl' / 'ChDl')
 NAMES = {1: md.NAMES[0],
@@ -107,7 +113,7 @@ def build_ds(loop_at, tc):
             moveq   #32,d5
             movea.l 48(sp),a1                ; out
             movea.l 52(sp),a0                ; in
-            lea     {fx.LINE:#x},a2
+            lea     {LINE_C:#x},a2               ; smp47: Lesen gecacht (Schreiben: Schleife, ungecacht)
             jmp     {loop_at:#x}
     ''')
     code = adone(a); check_cf(code, M_DS)
@@ -116,12 +122,12 @@ def build_ds(loop_at, tc):
 
 def build_setup(loop_at, tc):
     """Mod-Setup wie v1 (md.build_setup), aber Typ/Speed aus den RAM-Spiegeln, v2-Typnummern, Zeit ueber TC."""
-    saved = (md.DMODE, md.SPEED, md.B_CHO, md.B_VIB, md.dn.MD)
-    md.DMODE, md.SPEED, md.B_CHO, md.B_VIB, md.dn.MD = DMIR, SMIR, B_CHO, B_VIB, tc
+    saved = (md.DMODE, md.SPEED, md.B_CHO, md.B_VIB, md.dn.MD, md.LINE)
+    md.DMODE, md.SPEED, md.B_CHO, md.B_VIB, md.dn.MD, md.LINE = DMIR, SMIR, B_CHO, B_VIB, tc, LINE_C   # smp46: a2 gecacht
     try:
         return md.build_setup(loop_at)
     finally:
-        md.DMODE, md.SPEED, md.B_CHO, md.B_VIB, md.dn.MD = saved
+        md.DMODE, md.SPEED, md.B_CHO, md.B_VIB, md.dn.MD, md.LINE = saved
 
 
 def build_md(img, dd_at, ms_at):
@@ -288,8 +294,8 @@ def build_h(dsync):
 
 
 def build(img):
-    dl = dd.build_dl()
-    loop = md.build_loop()
+    dl = dd.build_dl(wr_alias=fx.LINE - LINE_C)          # smp47: Digital wie VIBDEL/CHODEL
+    loop = md.build_loop(wr_alias=fx.LINE - LINE_C)     # smp46: Lesen gecacht, Schreiben ungecacht
     # TC liegt in M_MD: Adresse aus einem ersten Durchlauf
     _, _, lab0 = build_md(img, 0, 0)
     tc = lab0['TC']

@@ -1,5 +1,35 @@
 # Changelog
 
+## v2.3.1 (2026-11-22)
+
+A small update: a 24 dB mode for the track filter, and less CPU load for the effects.
+
+### New
+
+- **12 Track filter: 24 dB.** In the filter mode, **FUNC + GATE** switches the selected track between 12 dB and 24 dB
+  (popup FILTER 12dB / 24dB). The 24 dB mode adds a second, clean filter stage (Q 0.707) at the same cutoff, after the
+  resonant first stage. Saved **per pattern and track**, not in the sound. GATE + PLAY (filter reset) also returns the
+  track to 12 dB. In the filter mode, FUNC + GATE no longer opens the click menu.
+
+### Less CPU load, same sound
+
+Some effect combinations (for example ChDel + Room) took so much processor time that the screen and the keys became
+sluggish. The effects now do the same work with less load. **The sound is unchanged:** in the emulator, every effect
+gives bit-for-bit the same output as before.
+
+- **04 Reverb FX:** Chorus I / II keep their buffer in cached memory (about half the load before). Hall, Room and Plate
+  run 8–11 % fewer instructions per block.
+- **05 Delay FX:** Digital, ViDel and ChDel read the delay line through the cache (ChDel used to make six uncached
+  memory accesses per sample, now one).
+
+On a Model:Samples, ChDel + Room measured 1–3 % less load with the load meter (patch 07) after the delay change alone.
+
+### Tools
+
+- `src/regen.py --write` regenerates the patch files and `manifest.json` from the generators.
+- `tests/prof_fx.py`: load profile of the effects in the emulator (instructions, memory accesses, a simple time model).
+- Manual: `docs/PPPCCC-MC-Mods-2.3.1-Manual.pdf`.
+
 ## v2.3.0 (2026-11-12)
 
 The final release. After 2.3 there will be no new features, only bug fixes as far as my time allows.
@@ -55,6 +85,8 @@ Unchanged: 02 hold-mute, 03 delay-notes, 10 trig-select, 13 lfo-amount.
   with the same behaviour as drumkilla's tweaks (own code; the tests compare both). The container code is included
   unchanged in `tools/vendor/` (drumkilla's `mtlib`, Modded-Cycles' `aplib_grow.py` and `crossflash.py`, MIT).
   `tools/build.py` needs only Python 3 and your firmware file; `--tweaks` is gone.
+- **Manual:** a PDF manual with installation, a quick reference, every patch and troubleshooting
+  (`docs/PPPCCC-MC-Mods-<version>-Manual.pdf`, built from the docs with `tools/make_manual.py`).
 - **Flasher:** build and flash in the browser (`flasher/`, on the project page). It checks your official file, resolves
   the requirements of the chosen patches, builds the same files as `tools/build.py` byte for byte, and can send them
   over Web MIDI. Pure JavaScript, nothing is uploaded; `tests/check_flasher.mjs` compares it with `tools/build.py`.

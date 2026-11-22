@@ -33,6 +33,7 @@ ENC_SHAPE, ENC_DSEND, ENC_RSEND, ENC_SWING, ENC_RSIZE, ENC_DTIME = 5, 8, 9, 12, 
 P_HUM_T, P_HUM_V = 40, 46             # groove: Humanize Zeit / Velocity, Track 1..6
 P_RFX, P_DFX, P_DSPD, P_GROOVE, P_STRUM = 52, 53, 54, 55, 56
 P_PAD = 57                            # smp27: PAD-Spuren (Bits 0..5), pad-mode
+P_FSLOPE = 58                         # smp45: track-filter 24 dB (Bits 0..5 = Spur 1..6; 0 = 12 dB)
 P_FIRST, P_LAST = 40, 63
 P_SIG, SIG = 60, (0x5043, 0x7632)       # Kennung 'PCv2' in 60..63 (Core)
 
@@ -64,7 +65,7 @@ CM_SU, CM_SCR = 0x4A33C3A8, 0x4A33C3A9   # control-mode: SETTINGS benutzt (Druec
 PAY, IMG_END, PAYSZ = 0x43000000, 0x401AA140, 0x10000
 BITMAP_VT = 0x401117C8                # Vtable der Bitmap-Klasse (Konstruktor 0x40070172: +4 Breite, +8 Hoehe, +12 Langworte je
 #                                       Spalte, +16 Bild, +20 Maske, +24 Flag; Spalten zu (Hoehe + 31) / 32 Langworten, MSB oben)
-PAY_SLOT = {'reverb-fx': (0x0000, 0x7000), 'control-mode': (0x7000, 0x800), 'pad-mode': (0x7800, 0x800), 'strings': (0x8000, 0x3000), 'sampler': (0xB000, 0x1000), 'core': (0xC000, 0x2000),
+PAY_SLOT = {'reverb-fx': (0x0000, 0x6000), 'track-filter': (0x6000, 0x1000), 'control-mode': (0x7000, 0x800), 'pad-mode': (0x7800, 0x800), 'strings': (0x8000, 0x3000), 'sampler': (0xB000, 0x1000), 'core': (0xC000, 0x2000),
             'mono': (0xE000, 0x2000)}
 # ---- smp18: Deskriptor-Tabelle in der Nutzlast des Cores (Start-Kopie der 76 der Firmware + Erweiterung 76..NDESC-1), nach
 # Modded-Cycles notes/18-19 (MIT; eigener Code). Maschinen-Mods schreiben ihre Eintraege (DESC_SLOT), Spender-Objekte (DONOR,

@@ -19,7 +19,7 @@ OPS = cfemac.ops()
 SYM = V2SYM['reverb-fx']
 chk('Nutzlast im Image: Platz reverb-fx der Nutzlast des Cores hinter dem MAIN OS (%d von %d B), gleich der erzeugten' % (len(BLOB), C.PAYSZ),
     IMG[C.IMG_END - BASE:C.IMG_END - BASE + len(BLOB)] == BLOB and len(STOCK) == C.IMG_END - BASE and len(IMG) == len(STOCK) + C.PAYSZ
-    and C.PAY_SLOT['reverb-fx'] == (0, 0x7000) and RV.PAY == C.PAY)
+    and C.PAY_SLOT['reverb-fx'] == (0, 0x6000) and len(BLOB) <= 0x6000 and RV.PAY == C.PAY)
 
 # ---------------- 1 Start
 u = Uc(UC_ARCH_M68K, UC_MODE_BIG_ENDIAN); u.ctl_set_cpu_model(mk.UC_CPU_M68K_CFV4E)

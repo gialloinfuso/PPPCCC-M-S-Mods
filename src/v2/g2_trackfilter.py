@@ -80,6 +80,16 @@ DESCS = [  # (k, Default, CC-Feld, NRPN, Sortierschluessel, Langname, Kurzname, 
     (K_DEC, 0x4000, 0xFFFFFFFF, 0xFFFFFFFF, 75, "Filter Decay", "FDEC", FMT_INT),
 ]
 FS, BLOCK_HZ = 48000.0, 1500.0
+# ---- smp45: 24 dB (Pip 14.11.2026). Zweite Stufe hinter dem Filter: derselbe SVF mit festem Q 0.707, linear (ohne Saettigung und
+# ohne Resonanz-Begrenzung), gleicher Cutoff (G der Stufe 1). Umschalten: FUNC + GATE im Filter-Modus, je Spur, gespeichert im
+# Pattern (Kopf-Byte C.P_FSLOPE, Bits 0..5). Code und Zustand im Nutzlast-Platz 'track-filter' des Cores (alle Masken sind voll).
+P_OFF, P_ROOM = C.PAY_SLOT['track-filter']
+PORG = C.PAY + P_OFF
+J_T24, J_C24, J_G24, J_FRS24 = PORG, PORG + 6, PORG + 12, PORG + 18      # Sprungtabelle (feste Adressen fuer den Code in den Masken)
+ST2 = PORG + 0xE00                   # 6 x TS wie Stufe 1: +0 s1, +4 s2, +8 G, +12 an, +16 c1, +20 c2, +24 e, +28 a3, +32 n, +36 n alt
+Q2 = math.sqrt(0.5)
+K2 = max(min(int(round(1 / (2 * Q2) * 2 ** 31)), 0x7FFFFFFF), 0)       # K = k/2 = 1/(2 Q)
+KEY_DONE = 0x4001CBF2                # Ende des Tasten-Handlers des Hauptbildschirms (d0 = d2.b)
 
 
 # ---------------- Kennlinien (Tabellen: 65 Werte, Index = Wort / 512, linear interpoliert)
@@ -147,7 +157,7 @@ def build_dsp(lab):
     tl:     move.l  48(sp),d0                ; d0 = Trig-Bit ; jsr TRACK (Adresse unten)
             moveq   #1,d1
             and.l   d1,d0
-            jsr     {M_DSP:#x}
+            jsr     {J_T24:#x}               ; smp45: TRACK, dann die zweite Stufe (24 dB)
             move.l  48(sp),d0                ; Trig-Bits >> 1
             lsr.l   #1,d0
             move.l  d0,48(sp)
@@ -242,7 +252,7 @@ def build_dsp(lab):
             cmp.l   d0,d7                    ; K = max(K, Kmin)
             bge     kk
             move.l  d0,d7
-    kk:     jsr     {lab['COEF']:#x}
+    kk:     jsr     {J_C24:#x}               ; smp45: G fuer die zweite Stufe merken, dann COEF
     ; ---------------- Kopf des Kernels (Start, stiller Block), dann KERNEL
             movea.l a6,a0
             lea     128(a6),a1
@@ -691,7 +701,7 @@ def fr_text(cs, names):
             addq.l  #4,sp
             tst.b   d0
             beq     ph3
-            jsr     FRS
+            jsr     {J_FRS24:#x}             ; smp45: 12 dB, dann FRS
     ph3:    moveq   #1,d4
             jmp     {PL_DONE:#x}
 """
@@ -744,6 +754,234 @@ def frs_text(cs, names):
 """
 
 
+# ---- smp45: zweite Stufe (24 dB) in der Nutzlast
+KER2_BODY = '''
+            move.l  (a0),d0                  ; x
+            asr.l   #1,d0                    ; u = x/2
+            move.l  d2,acc2                  ; y = s2 ...
+            mac     d3,d1,acc0
+            mac     d4,d0,acc0
+            msac    d4,d2,acc0               ; s1'
+            mac     d5,d2,acc1
+            mac     d4,d1,acc1
+            mac     a2,d0,acc1
+            mac     a2,d0,acc1               ; s2'
+            movclr  acc0,d1
+            movclr  acc1,d2
+            mac     d2,d7,acc2               ; ... + s2\''''
+
+
+def p24_text(lab, cs, names, strs):
+    hp = C.HDR + C.P_FSLOPE
+    sel = f'''
+            jsr     {C.SEL_A:#x}
+            move.l  d0,-(sp)
+            jsr     {C.SEL_B:#x}
+            move.l  d0,(sp)
+            jsr     {C.SEL_C:#x}
+            addq.l  #4,sp
+            move.l  d0,d2                    ; d2 = ausgewaehlte Spur'''
+    return f'''
+            jmp     T24
+            jmp     C24
+            jmp     G24
+            jmp     FRS24
+    ; ---------------- C24 (statt jsr COEF in TRACK; d6 G, d7 K, a4 Zustand): G fuer die zweite Stufe merken
+    C24:    move.l  a4,d0
+            addi.l  #{ST2 - M_ST:#x},d0
+            movea.l d0,a0
+            move.l  d6,8(a0)
+            jmp     {lab['COEF']:#x}
+    ; ---------------- T24 (d0 Trig, a4 Zustand, a5 Parameter, a6 Puffer): Stufe 1 (TRACK), dann bei 24 dB die zweite Stufe.
+    ; Die zweite Stufe blendet wie die erste ueber {NFADE} Bloecke ein und aus (n2 <= n: sie ist aus, bevor die Spur bitgenau wird).
+    T24:    jsr     {lab['TRACK']:#x}
+            move.l  a4,d0
+            addi.l  #{ST2 - M_ST:#x},d0
+            movea.l d0,a3                    ; a3 = Zustand der zweiten Stufe
+            tst.l   12(a4)                   ; Filter aus (Spur bitgenau): zweite Stufe aus
+            beq     toff
+            move.l  a4,d0
+            subi.l  #{M_ST:#x},d0
+            moveq   #{TS},d1
+            divu.l  d1,d0                    ; d0 = Spur
+            move.l  {C.CUR_PAT:#x},d1
+            beq     tdn
+            movea.l d1,a0
+            mvz.b   {hp}(a0),d1
+            btst    d0,d1                    ; 24 dB fuer diese Spur?
+            beq     tdn
+            move.l  {T_N}(a4),d0             ; Stufe 1 blendet aus: Stufe 2 auch
+            cmp.l   {T_NO}(a4),d0
+            blt     tdn
+            move.l  {T_N}(a3),d0             ; einblenden (n2 -> n2 + 1, bis {NFADE})
+            move.l  d0,{T_NO}(a3)
+            moveq   #{NFADE},d1
+            cmp.l   d1,d0
+            bge     trun
+            addq.l  #1,d0
+            move.l  d0,{T_N}(a3)
+            bra     trun
+    tdn:    move.l  {T_N}(a3),d0
+            bne     tf
+    toff:   clr.l   12(a3)                   ; aus: Zustand vergessen
+            clr.l   {T_N}(a3)
+            clr.l   {T_NO}(a3)
+            rts
+    tf:     move.l  d0,{T_NO}(a3)            ; ausblenden
+            subq.l  #1,d0
+            move.l  d0,{T_N}(a3)
+    trun:   move.l  a4,-(sp)
+            movea.l a3,a4
+            move.l  8(a4),d6                 ; G wie Stufe 1, K fest (Q {Q2:.3f})
+            move.l  #{K2:#x},d7
+            jsr     {lab['COEF']:#x}
+            movea.l a6,a0
+            lea     128(a6),a1
+            tst.l   12(a4)
+            bne     tr
+            move.l  (a0),d0                  ; Start: s1 = 0, s2 = x0/2
+            asr.l   #1,d0
+            move.l  d0,4(a4)
+            clr.l   (a4)
+            moveq   #1,d0
+            move.l  d0,12(a4)
+            bra     tk
+    tr:     movea.l a0,a2
+            moveq   #0,d0
+            moveq   #7,d1
+    tz:     or.l    (a2)+,d0
+            or.l    (a2)+,d0
+            or.l    (a2)+,d0
+            or.l    (a2)+,d0
+            subq.l  #1,d1
+            bpl     tz
+            tst.l   d0
+            bne     tk
+            move.l  (a4),d0                  ; Block still: Zustand klein -> loeschen, nichts tun
+            bpl     tp1
+            neg.l   d0
+    tp1:    move.l  4(a4),d1
+            bpl     tp2
+            neg.l   d1
+    tp2:    or.l    d1,d0
+            cmpi.l  #0x1000,d0
+            bcc     tk
+            clr.l   (a4)
+            clr.l   4(a4)
+            bra     tx
+    tk:     bsr     KER2
+    tx:     movea.l (sp)+,a4
+            rts
+    ; ---------------- KER2 (a4 Zustand der zweiten Stufe mit Koeffizienten, a0 Puffer, a1 Ende): 32 Samples, linear
+    KER2:   move.l  {T_N}(a4),d0
+            add.l   {T_NO}(a4),d0
+            cmpi.l  #{2 * NFADE},d0
+            beq     kfull
+            move.l  {T_NO}(a4),d0            ; Ueberblendung wie KERNEL: F von n_alt/8 nach n_neu/8
+            moveq   #28,d1
+            lsl.l   d1,d0
+            tst.l   d0
+            bpl     kf0
+            subq.l  #1,d0
+    kf0:    move.l  {T_N}(a4),d1
+            sub.l   {T_NO}(a4),d1
+            moveq   #23,d6
+            asl.l   d6,d1
+            move.l  a4,-(sp)
+            move.l  d1,-(sp){KER_REGS}
+            movea.l d0,a3                    ; a3 = F, a4 = 1 - F
+            move.l  d7,d6
+            sub.l   d0,d6
+            movea.l d6,a4
+    klf:{KER2_BODY}
+            movclr  acc2,d0
+            mac     a3,d0,acc2
+            move.l  (a0),d6
+            mac     a4,d6,acc2
+            movclr  acc2,d0
+            move.l  d0,(a0)+
+            adda.l  (sp),a3
+            suba.l  (sp),a4
+            cmpa.l  a1,a0
+            bne     klf
+            movea.l 4(sp),a4
+            addq.l  #8,sp
+            movem.l d1-d2,(a4)
+            rts
+    kfull:{KER_REGS}
+    kl:{KER2_BODY}
+            movclr  acc2,d0
+            move.l  d0,(a0)+
+            cmpa.l  a1,a0
+            bne     kl
+            movem.l d1-d2,(a4)
+            rts
+    ; ---------------- G24: GATE-Zweig im Hauptbildschirm (Haken 0x4001c326; d3 Ereignis, a2 Ansicht). Im Filter-Modus:
+    ; FUNC + GATE (Druecken) schaltet 12 / 24 dB der ausgewaehlten Spur um; alle FUNC-Ereignisse der Taste sind verbraucht
+    ; (kein Click-Menue). Sonst GREL wie bisher.
+    G24:    move.l  {MODE:#x},d0
+            cmpi.l  #{MAGIC:#x},d0
+            bne     g9
+            move.l  d3,-(sp)
+            jsr     {K_FUNC:#x}
+            addq.l  #4,sp
+            tst.b   d0
+            beq     g9
+            move.l  d3,-(sp)
+            jsr     {K_PRESS:#x}
+            addq.l  #4,sp
+            tst.b   d0
+            beq     g8
+            bsr     SLT
+    g8:     moveq   #1,d2
+            jmp     {KEY_DONE:#x}
+    g9:     jmp     {lab['GREL']:#x}
+    ; SLT: 12 / 24 dB der ausgewaehlten Spur umschalten (Pattern-Kopf), Popup
+    SLT:    move.l  d2,-(sp){sel}
+            move.l  {C.CUR_PAT:#x},d0
+            beq     s9
+            movea.l d0,a0
+            mvz.b   {hp}(a0),d0
+            bchg    d2,d0
+            move.b  d0,{hp}(a0)
+            move.l  #{strs['S_12']:#x},d1
+            btst    d2,d0
+            beq     s1
+            move.l  #{strs['S_24']:#x},d1
+    s1:     lea     {names['S_FLT']:#x},a0
+            suba.l  a1,a1
+            moveq   #{C.OV_TEXT},d0
+            jsr     {cs['OVS']:#x}
+    s9:     move.l  (sp)+,d2
+            rts
+    ; FRS24: Filter-Reset (GATE + PLAY): die ausgewaehlte Spur zurueck auf 12 dB, dann FRS wie bisher
+    FRS24:  move.l  d2,-(sp){sel}
+            move.l  {C.CUR_PAT:#x},d0
+            beq     f9
+            movea.l d0,a0
+            mvz.b   {hp}(a0),d0
+            bclr    d2,d0
+            move.b  d0,{hp}(a0)
+    f9:     move.l  (sp)+,d2
+            jmp     {lab['FRS']:#x}
+'''
+
+
+def build24(lab, cs, names):
+    """Nutzlast 'track-filter': Sprungtabelle, Code, Texte; Zustand ST2 (im Image genullt)."""
+    E.LOG[:] = [x for x in E.LOG if not PORG <= x[0] < PORG + P_ROOM]
+    strs = collections.defaultdict(int)
+    for _ in range(2):
+        E.LOG[:] = [x for x in E.LOG if not PORG <= x[0] < PORG + P_ROOM]
+        a = A(PORG); asm(a, p24_text(lab, cs, names, strs), {})
+        code = adone(a)
+        at = PORG + len(code); txt = b''
+        for nm, t in (('S_12', '12dB'), ('S_24', '24dB')):
+            strs[nm] = at + len(txt); txt += t.encode() + b'\0'
+    assert (a.lab['T24'], PORG + len(code) + len(txt) <= ST2) and PORG + len(code) + len(txt) <= ST2 and ST2 + 6 * TS <= PORG + P_ROOM
+    return code + txt, dict(a.lab, **strs)
+
+
 def desc_rows(names):
     rows = b''
     for i, (k, dflt, cc, nrpn, key, _, _, _) in enumerate(DESCS):
@@ -771,6 +1009,8 @@ def build():
     ui, lu = build_ui(cs, names); lab.update(lu)
     rt, lr = build_rt(cs, names); lab.update(lr)
     ld_, ll = build_led(); lab.update(ll)
+    p24, l24 = build24(lab, cs, names)
+    lab.update({k: v for k, v in l24.items() if k in ('T24', 'C24', 'G24', 'FRS24', 'KER2', 'SLT', 'S_12', 'S_24')}); lab['_P24'] = p24
     parts = {M_PO: po, M_DSP: dsp, M_KER: ker, M_GT: struct.pack('>65i', *gt), M_KT: struct.pack('>65i', *kt),
              M_DT: struct.pack('>65i', *dt), M_NT: struct.pack('>65i', *nt), M_CO: co, M_UI: ui, M_RT: rt, M_LED: ld_, M_SL: sl, M_PT: pt, M_ST: bytes(6 * TS + 12)}
     return parts, lab, names
@@ -788,7 +1028,8 @@ def tweak(img):
     W.hook(RT_HOOK, RT_CK, jmp(lab['RT']) + bytes.fromhex('4e71'))
     core.slot_write(W, 'track-filter', lab['ENC'])
     W.hook(LED_HOOK, LED_CK, jmp(lab['FLED']))
-    W.hook(GREL_HOOK, GREL_CK, jmp(lab['GREL']) + bytes.fromhex('4e71'))
+    W.hook(GREL_HOOK, GREL_CK, jmp(J_G24) + bytes.fromhex('4e71'))             # smp45: G24 (FUNC + GATE im Modus), dann GREL
+    W.put(C.PIMG(PORG), lab['_P24'])                                           # smp45: zweite Stufe (24 dB) in der Nutzlast
     W.hook(PLH_HOOK, PLH_CK, jmp(lab['PLH']))
     core.sslot_write(W, 'track-filter', lab['FH'])
     lo = C.DESC(1)
@@ -805,9 +1046,11 @@ def tweak(img):
                   "GATE now toggles on release (so GATE + PLAY does not toggle the gate).",
                   "Erzeugt von v2/g2_trackfilter.py."], W,
                  requires=['core'], hooks=[f"{x:#x}" for x in hooks],
-                 memory=[{"va": f"{M_ST:#x}", "size": 6 * TS + 12, "ram": True, "use": "filter state + mode"}],
+                 memory=[{"va": f"{M_ST:#x}", "size": 6 * TS + 12, "ram": True, "use": "filter state + mode"},
+                         {"va": f"{PORG:#x}", "size": len(lab['_P24']), "ram": True, "use": "payload slot 'track-filter' (24 dB stage: code)"},
+                         {"va": f"{ST2:#x}", "size": 6 * TS, "ram": True, "use": "state of the 24 dB stage"}],
                  symbols={k: f"{lab[k]:#x}" for k in ('POST', 'TRACK', 'KERNEL', 'COEF', 'INTERP', 'KNOB', 'OBJS', 'KEYH', 'RT', 'FLED', 'GREL', 'PLH', 'FRS',
-                                                       'FH', 'GT', 'KT', 'DT')},
+                                                       'FH', 'GT', 'KT', 'DT', 'T24', 'C24', 'G24', 'FRS24', 'KER2', 'SLT')},
                  params={"state": f"{M_ST:#x}", "ts": TS, "mode": f"{MODE:#x}", "rh": f"{RH:#x}", "key_retrig": KEY_RETRIG, "magic": f"{MAGIC:#x}", "k": [K_CUT, K_RES, K_ENV, K_DEC],
                          "kmap": list(KMAP)})
 
@@ -816,4 +1059,5 @@ if __name__ == "__main__":
     t = tweak(stock())
     if len(sys.argv) > 1: save(t, sys.argv[1])
     parts, lab, _ = build()
-    print({f"{va:#x}": len(b) for va, b in parts.items()}, {k: hex(v) for k, v in lab.items() if k.isupper()})
+    print({f"{va:#x}": len(b) for va, b in parts.items()}, {k: hex(v) for k, v in lab.items() if k.isupper() and not k.startswith('_')})
+    print('Nutzlast track-filter:', len(lab['_P24']), 'B')

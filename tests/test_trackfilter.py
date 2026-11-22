@@ -22,6 +22,12 @@ TRK, PAR, CTX = 0x80001858, 0x4F040000, 0x4F041000
 TS = G.TS
 
 
+# smp45: laufendes Pattern PATB (rig), Kopf-Byte C.P_FSLOPE = 24-dB-Bits
+def slope(e, bits):
+    e.w32(C.CUR_PAT, PATB); e.u.mem_write(PATB + C.HDR + C.P_FSLOPE, bytes([bits]))
+def slope_get(e): return e.u.mem_read(PATB + C.HDR + C.P_FSLOPE, 1)[0]
+
+
 def emu():
     e = Emu(IMG)
     m = MEMAC.EMAC(e.u); m.install(OPS); e.mac = m
@@ -46,7 +52,8 @@ def block(e, xs, trig=0, count=False):
     e.w32(CTX + 16, trig)
     n = [0]
     if count:
-        h = e.u.hook_add(UC_HOOK_CODE, lambda u, a, z, _: n.__setitem__(0, n[0] + 1), begin=0x40140000, end=0x40190000)
+        h = e.u.hook_add(UC_HOOK_CODE, lambda u, a, z, _: n.__setitem__(0, n[0] + 1) if a < 0x40190000 or a >= G.PORG else None,
+                         begin=0x40140000, end=G.PORG + G.P_ROOM)
     e.mac.macsr = 0x1234 & 0xff
     d0, good = e.call(S['POST'], TRK, PAR, regs={mk.UC_M68K_REG_A3: CTX}, count=400000)
     if count: e.u.hook_del(h)
@@ -65,8 +72,31 @@ GT, KT, DT, NT = G.tables()
 
 
 class Model:
-    def __init__(s): s.s1 = s.s2 = s.env = 0.0; s.on = False; s.n = 0
-    def block(s, xs, trig, cut, res, env, dec):
+    def __init__(s): s.s1 = s.s2 = s.env = 0.0; s.on = False; s.n = 0; s.t1 = s.t2 = 0.0; s.on2 = False; s.n2 = 0
+    def block(s, xs, trig, cut, res, env, dec, s24=False):
+        """smp45: s24 = 24 dB (zweite Stufe, linear, Q 0.707, gleicher Cutoff)"""
+        no = s.n
+        ys = s.stage1(xs, trig, cut, res, env, dec)
+        if not s.on:
+            s.on2 = False; s.n2 = 0; return ys
+        no2 = s.n2
+        if s24 and s.n >= no: s.n2 = min(s.n2 + 1, G.NFADE)
+        elif s.n2 == 0:
+            s.on2 = False; return ys
+        else: s.n2 -= 1
+        g = 4 * lerp(GT, s.c); k = 2 * G.K2 / 2 ** 31
+        a1 = 1 / (1 + g * (g + k)); c1, c2, a3 = 2 * a1 - 1, 2 * g * a1, g * g * a1; ee = 1 - 2 * a3
+        if not s.on2: s.t1, s.t2, s.on2 = 0.0, ys[0] / 2, True
+        out = []
+        for x in ys:
+            u = x / 2
+            n1 = c1 * s.t1 + c2 * u - c2 * s.t2
+            n2 = ee * s.t2 + c2 * s.t1 + 2 * a3 * u
+            n1, n2 = max(-1, min(n1, 1)), max(-1, min(n2, 1))
+            out.append(max(-1, min(s.t2 + n2, 1))); s.t1, s.t2 = n1, n2
+        if no2 == s.n2 == G.NFADE: return out
+        return [(no2 / 8 + i * (s.n2 - no2) / 256) * y + (1 - no2 / 8 - i * (s.n2 - no2) / 256) * x for i, (x, y) in enumerate(zip(ys, out))]
+    def stage1(s, xs, trig, cut, res, env, dec):
         if trig: s.env = 1.0
         elif s.env:
             s.env *= lerp(DT, dec)
@@ -78,6 +108,7 @@ class Model:
         else:
             c = cut + (int(math.floor(2 * (env - 0x4000) * s.env)) if s.env else 0)
             c = min(max(c, 0), G.TOP); s.n = min(s.n + 1, G.NFADE)
+        s.c = c
         g = 4 * lerp(GT, c); k = 2 * max(lerp(KT, res), lerp(NT, c))
         a1 = 1 / (1 + g * (g + k)); c1, c2, a3 = 2 * a1 - 1, 2 * g * a1, g * g * a1; ee = 1 - 2 * a3
         if not s.on: s.s1, s.s2, s.on = 0.0, xs[0] / 2, True
@@ -244,7 +275,88 @@ e2 = emu()
 for t in range(6): setp(e2, t)
 _, _, n0 = block(e2, [sine(200, 0.4, 32)] * 6, count=True)
 print('     Kosten: %d Befehle pro Block (6 Spuren an), %d (alle aus); Block = ~166000 Takte' % (n, n0))
-chk('Kosten < 7300 Befehle pro Block (smp13: + 1 mac je Sample statt <<)', n < 7300)
+chk('Kosten < 7500 Befehle pro Block (smp13: + 1 mac je Sample statt <<; smp45: + T24 / C24 je Spur)', n < 7500)
+
+# ---------------- 1g smp45: 24 dB (zweite Stufe in der Nutzlast; Pattern-Kopf-Byte C.P_FSLOPE, Bits = Spuren)
+e = emu(); slope(e, 0)
+e0 = emu()                                                # ohne laufendes Pattern
+for t, c in enumerate(cases): setp(e, t, *c); setp(e0, t, *c)
+same = True
+for b in range(40):
+    xs = [[0.6 * rnd.uniform(-1, 1) + sine(110 * (t + 1), 0.3, 32 * b)[i] for i in range(32)] for t in range(6)]
+    o1, g1, _ = block(e, xs, 0x3F if b % 13 == 0 else 0); o2, g2, _ = block(e0, xs, 0x3F if b % 13 == 0 else 0)
+    same &= g1 and g2 and o1 == o2
+chk('24-dB-Bits 0 = ohne Pattern = 12 dB wie bisher (40 Bloecke, 6 Spuren bitgleich); zweite Stufe ruht',
+    same and all(e.r32(G.ST2 + TS * t + 12) == 0 and e.r32(G.ST2 + TS * t + G.T_N) == 0 for t in range(6)))
+# Modell: Spuren 0, 2, 4 mit 24 dB, 1, 3, 5 mit 12 dB; Umschalten im Lauf (Bloecke 40, 80), Filter aus / an (Cutoff 127) bei 24 dB
+e = emu(); slope(e, 0b010101); models = [Model() for _ in range(6)]
+cs24 = [list(c) for c in cases]
+for t, c in enumerate(cs24): setp(e, t, *c)
+err = [0.0] * 6; okb = True; bits = 0b010101; step = [0.0] * 6; prev = [0.0] * 6
+for b in range(160):
+    if b == 40: bits = 0b101010; slope(e, bits)
+    if b == 80: bits = 0b111111; slope(e, bits)
+    if b == 100: cs24[1][0] = G.TOP; cs24[1][2] = 0x4000; setp(e, 1, *cs24[1])       # Spur 1: Filter aus (blendet aus) ...
+    if b == 104: cs24[1][0] = 0x2800; setp(e, 1, *cs24[1])                           # ... und im Ausblenden wieder an
+    if b == 120: cs24[3][0] = G.TOP; cs24[3][2] = 0x4000; setp(e, 3, *cs24[3])       # Spur 3: ganz aus
+    if b == 140: cs24[3][0] = 0x3000; setp(e, 3, *cs24[3])
+    xs = [[0.6 * rnd.uniform(-1, 1) * (1 if (b // 30) % 2 == 0 else 0.1) + sine(110 * (t + 1), 0.3, 32 * b)[i] for i in range(32)]
+          for t in range(6)]
+    trig = 0x3F if b % 25 == 0 else 0
+    out, good, _ = block(e, xs, trig); okb &= good
+    for t in range(6):
+        ref = models[t].block(xs[t], trig >> t & 1, *cs24[t], s24=bool(bits >> t & 1))
+        err[t] = max(err[t], max(abs(a - r) for a, r in zip(out[t], ref)))
+chk('24 dB gegen das Modell (Umschalten 12 <-> 24 im Lauf, Filter aus / an): max. Abweichung %s' % ', '.join('%.1e' % x for x in err),
+    max(err[:5]) < 5e-4 and err[5] < 8e-3 and okb)
+n2 = [e.r32(G.ST2 + TS * t + G.T_N) for t in range(6)]; n1 = [e.r32(G.M_ST + TS * t + G.T_N) for t in range(6)]
+chk('  Ueberblend-Zaehler am Ende: Stufe 1 %s, Stufe 2 %s (n2 <= n1)' % (n1, n2), all(a <= b_ for a, b_ in zip(n2, n1)) and n2[0] == G.NFADE)
+# Frequenzgang 24 dB (kleiner Pegel): Reso 0 = Q 0.5 x Q 0.707
+def gain24(cut, res, f, amp=0.05, nb=60, s24=1):
+    e = emu(); slope(e, s24)
+    for t in range(6): setp(e, t)
+    setp(e, 0, cut, res); pk = 0.0
+    for b in range(nb):
+        out, _, _ = block(e, [sine(f, amp, 32 * b)] + [[0.0] * 32] * 5)
+        if b >= nb // 2: pk = max(pk, max(abs(v) for v in out[0]))
+    return 20 * math.log10(pk / amp)
+h_lo, h_c, h_2, h_4 = gain24(cw, 0, fc / 8), gain24(cw, 0, fc), gain24(cw, 0, fc * 2), gain24(cw, 0, fc * 4)
+chk('24 dB, Cutoff 64 = %.0f Hz, Reso 0: unten %.1f dB, bei fc %.1f dB (-9), 2 fc %.1f dB, 4 fc %.1f dB (~ -48; 12 dB: %.1f)'
+    % (fc, h_lo, h_c, h_2, h_4, g_hi), abs(h_lo) < 0.3 and abs(h_c + 9.0) < 0.7 and -52 < h_4 < -44 and h_4 - h_2 < -21)
+hq = gain24(cw, 0x7F00, fc, amp=0.01); gq = gain(cw, 0x7F00, fc, amp=0.01)
+chk('24 dB, volle Resonanz bei fc: %.1f dB (12 dB: %.1f dB; Stufe 2 nimmt 3 dB)' % (hq, gq), abs(hq - (gq - 3.0)) < 0.5)
+# Umschalten mit lautem Signal: kein Sprung
+e = emu(); slope(e, 0); setp(e, 0, 0x4800, 0x5000)
+prev = None; mx = 0.0; ref_step = 0.0
+for b in range(60):
+    if b in (20, 40): slope(e, 1 if b == 20 else 0)
+    out, _, _ = block(e, [sine(1500, 0.9, 32 * b)] + [[0.0] * 32] * 5)
+    seq = ([prev] if prev is not None else []) + out[0]
+    st = max(abs(a - b_) for a, b_ in zip(seq, seq[1:]))
+    if b in range(20, 30) or b in range(40, 50): mx = max(mx, st)
+    else: ref_step = max(ref_step, st)
+    prev = out[0][-1]
+chk('24 dB ein / aus bei Sinus 1.5 kHz 0.9: groesster Schritt beim Umschalten %.3f (sonst %.3f)' % (mx, ref_step), mx < 1.25 * ref_step)
+# Stabilitaet und Ruhe
+e = emu(); slope(e, 0x3F)
+for t in range(6): setp(e, t, 0x0800, 0x7F00, 0x7F00, 0x7F00)
+mx = 0.0
+for b in range(300):
+    sq = [0.999 if (i // 8) % 2 == 0 else -0.999 for i in range(32)]
+    out, good, _ = block(e, [sq] * 6, 0x3F if b % 40 == 0 else 0); mx = max(mx, max(abs(v) for o in out for v in o))
+for b in range(1500): out, good, _ = block(e, [[0.0] * 32] * 6)
+tail = max(abs(v) for o in out for v in o)
+st2 = [struct.unpack('>2i', bytes(e.u.mem_read(G.ST2 + TS * t, 8))) for t in range(6)]
+chk('24 dB, volle Resonanz + Vollaussteuerung: begrenzt (max %.3f); danach Ruhe: Ausgang %.1e, Zustand der Stufe 2 geloescht' % (mx, tail),
+    mx <= 1.0 and tail == 0 and all(a == 0 and b_ == 0 for a, b_ in st2))
+# Kosten
+e = emu(); slope(e, 0x3F)
+for t in range(6): setp(e, t, 0x3000, 0x4000, 0x6000, 0x4000)
+_, _, nf24 = block(e, [[0.3] * 32] * 6, trig=0x3F, count=True)
+for b in range(10): block(e, [sine(200, 0.4, 32 * b)] * 6)
+_, _, n24 = block(e, [sine(200, 0.4, 32)] * 6, count=True)
+print('     Kosten 24 dB: %d Befehle pro Block (6 Spuren; 12 dB: %d), beim Einblenden %d' % (n24, n, nf24))
+chk('Kosten 24 dB auf allen 6 Spuren < 11500 Befehle pro Block (zweite Stufe linear: 16 Befehle je Sample)', n24 < 11500)
 
 # ---------------- 2a Knopf-Zuordnung
 e = emu()
@@ -333,7 +445,8 @@ retrig(1); gate((G.KEY_RETRIG,)); retrig(0)
 q = retrig(1); r = gate((G.KEY_RETRIG,)); q2 = retrig(0)
 chk('RETRIG + GATE im Modus: bleibt an', r[1] and q2[1])
 # ---------------- 2b' smp24: GATE + PLAY = Filter-Reset (Transport-Handler 0x4002439a, Haken PLH)
-chk('Haken 0x4001c326 = jmp GREL ; nop, 0x400243d6 = jmp PLH', IMG[G.GREL_HOOK - BASE:][:8] == C.jmp(S['GREL']) + b'\x4e\x71'
+chk('Haken 0x4001c326 = jmp G24 (Sprungtabelle der Nutzlast; smp45) ; nop, 0x400243d6 = jmp PLH', IMG[G.GREL_HOOK - BASE:][:8] == C.jmp(G.J_G24) + b'\x4e\x71'
+    and bytes(e.u.mem_read(G.J_G24, 6)) == C.jmp(S['G24']) and bytes(e.u.mem_read(G.J_T24, 6)) == C.jmp(S['T24'])
     and IMG[G.PLH_HOOK - BASE:][:6] == C.jmp(S['PLH']))
 setp = []
 def stub(addr, ret, rec=None):
@@ -374,6 +487,39 @@ n = len(acts); g = grel(0)
 chk('  danach GATE loslassen: kein Umschalten', g and len(acts) == n)
 r = play(10, 0, (7,)); r2 = play(10, 1 | 8, (7,))
 chk('GATE + PLAY loslassen / Wiederholung: verbraucht, kein weiterer Reset', r[0] == r2[0] == G.PL_DONE and r[2] == r2[2] == [])
+# ---------------- 2b'' smp45: FUNC + GATE im Filter-Modus = 12 / 24 dB der ausgewaehlten Spur (3), Pattern-Kopf-Byte
+def fgate(bits, mode, pat=True):
+    e.w32(G.MODE, G.MAGIC if mode else 0); e.w32(EV + 0x10, bits); e.w32(C.VARS + C.V_VAL, 0); e.w32(C.VARS + C.V_L1, 0)
+    e.w32(C.CUR_PAT, PATB if pat else 0)
+    sp = STACK - 0x300; e.u.reg_write(mk.UC_M68K_REG_A7, sp); e.u.reg_write(mk.UC_M68K_REG_D3, EV); e.u.reg_write(mk.UC_M68K_REG_A2, VIEW)
+    for i, r in enumerate(KEEP):
+        if r not in (mk.UC_M68K_REG_D3, mk.UC_M68K_REG_A2): e.u.reg_write(r, 0xC0DE0000 + i)
+    hs = [e.u.hook_add(UC_HOOK_CODE, lambda u, a, z, _: u.emu_stop(), begin=x, end=x) for x in (G.GREL_BACK, G.KEY_DONE)]
+    e.u.emu_start(G.GREL_HOOK, 0, count=50000)
+    for h in hs: e.u.hook_del(h)
+    pc = e.u.reg_read(mk.UC_M68K_REG_PC); a7 = e.u.reg_read(mk.UC_M68K_REG_A7)
+    keep = all(e.u.reg_read(r) == 0xC0DE0000 + i for i, r in enumerate(KEEP) if r not in (mk.UC_M68K_REG_D3, mk.UC_M68K_REG_A2, mk.UC_M68K_REG_D2))
+    keep &= e.u.reg_read(mk.UC_M68K_REG_D3) == EV and e.u.reg_read(mk.UC_M68K_REG_A2) == VIEW
+    l1 = e.cstr(e.r32(C.VARS + C.V_L1)) if e.r32(C.VARS + C.V_L1) else ''
+    return pc, a7 - sp, e.u.reg_read(mk.UC_M68K_REG_D2) & 0xff, popup(), l1, keep
+e.held = set(); e.u.mem_write(PATB + C.HDR + C.P_FSLOPE, bytes([0x21]))
+PF = 1 | 2 | 0x10                                        # gedrueckt, FUNC
+r = fgate(PF, True); b1 = slope_get(e); r2 = fgate(PF, True); b2 = slope_get(e)
+chk('FUNC + GATE im Modus: 24 dB der Spur 3 an (Byte %#x, Popup %s %s), noch einmal: aus (%#x, %s); verbraucht (Ende des Handlers, d2 = 1)'
+    % (b1, r[4], r[3], b2, r2[3]), r[0] == r2[0] == G.KEY_DONE and r[1] == r2[1] == 0 and r[2] == r2[2] == 1 and b1 == 0x29 and b2 == 0x21
+    and (r[3], r[4]) == ('24dB', 'FILTER') and (r2[3], r2[4]) == ('12dB', 'FILTER') and r[5] and r2[5])
+r = fgate(2, True); r2 = fgate(1 | 2 | 8 | 0x10, True)
+chk('  FUNC + GATE loslassen / Wiederholung im Modus: verbraucht, kein Umschalten', r[0] == r2[0] == G.KEY_DONE and slope_get(e) == 0x21
+    and r[3] == r2[3] == '' and r[5] and r2[5])
+r = fgate(PF, False); r2 = fgate(1 | 0x10, True)
+chk('  FUNC + GATE ohne Modus (Click-Menue der Firmware) und GATE ohne FUNC im Modus: Firmware-Weg wie bisher (0x4001c32e), kein Umschalten',
+    r[0] == r2[0] == G.GREL_BACK and r[1] == r2[1] == -4 and slope_get(e) == 0x21 and r[3] == r2[3] == '' and r[5] and r2[5])
+r = fgate(PF, True, pat=False)
+chk('  ohne laufendes Pattern: verbraucht, nichts geschrieben, kein Popup', r[0] == G.KEY_DONE and slope_get(e) == 0x21 and r[3] == '' and r[5])
+e.w32(C.CUR_PAT, PATB); e.u.mem_write(PATB + C.HDR + C.P_FSLOPE, bytes([0x3F])); e.w32(G.GP, 1); n = len(setp); r = play(10, 1, (7,))
+chk('GATE + PLAY: Spur 3 zurueck auf 12 dB (Byte %#x), Reset wie bisher (4 Parameter, Popup %s)' % (slope_get(e), r[3]),
+    slope_get(e) == 0x37 and len(r[2]) == 4 and r[3] == 'RESET' and r[0] == G.PL_DONE and r[4])
+e.w32(C.CUR_PAT, 0); e.w32(G.MODE, 0)
 # ---------------- 2c Speichern / Laden (echte Funktionen)
 e = emu()
 SND, REC1, SND2 = 0x4F044000, 0x4F045000, 0x4F046000

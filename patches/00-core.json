@@ -216,7 +216,7 @@
    "va": "0x43000000",
    "size": 65536,
    "ram": true,
-   "use": "payload (slots: reverb-fx +0x0, control-mode +0x7000, pad-mode +0x7800, strings +0x8000, sampler +0xb000, core +0xc000, mono +0xe000), copied at start"
+   "use": "payload (slots: reverb-fx +0x0, track-filter +0x6000, control-mode +0x7000, pad-mode +0x7800, strings +0x8000, sampler +0xb000, core +0xc000, mono +0xe000), copied at start"
   },
   {
    "va": "0x4018f98c",

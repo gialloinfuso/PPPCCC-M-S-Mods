@@ -8,3 +8,6 @@ elektron-model-tweaks/
 __pycache__/
 *.pyc
 overlay_preview.png
+# official firmware files and personal notes for Claude Code
+firmware/
+CLAUDE.local.md

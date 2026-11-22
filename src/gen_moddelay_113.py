@@ -64,8 +64,10 @@ NAMES = {0: (b"Digi Send", b"DIGS", b"Digi Time", b"TIME", b"Digi Fdbk", b"FDBK"
          3: (b"VIBDEL Send", b"VIBD", b"VIBDEL Time", b"TIME", b"VIBDEL Fdbk", b"FDBK")}
 
 
-def build_loop():
-    """v2 (25.10.2026, Pips Lastmessung: Digi 77 %, VIBDEL 82 %, CHODEL 87 % Mittel): LFO nur noch einmal je Block (32 Frames)
+def build_loop(wr_alias=0):
+    """wr_alias: 0 = wie v1 (a2 = Zeile, Lesen und Schreiben dort). Sonst zeigt a2 auf den gecachten Alias der Zeile und
+    das Schreiben geht an a2 + wr_alias (ungecacht, wie v1): v2 smp46, g2_delayfx.
+    v2 (25.10.2026, Pips Lastmessung: Digi 77 %, VIBDEL 82 %, CHODEL 87 % Mittel): LFO nur noch einmal je Block (32 Frames)
     am Blockende berechnet, dazwischen linear (MOD += DMOD je Frame). Spart ~20 Befehle je Frame.
     Gleiten wie Digital / Original; VIBDEL: y = interp((w - cur - VB) << 8 - mod); CHODEL: sauberer Kopf y0 + zwei
     modulierte Koepfe (+-mod); Rueckkopplung + Eingang wie Digital, Tiefpass 1/2, Hochpass 3/256; ip = lineare Interpolation."""
@@ -189,6 +191,7 @@ def build_loop():
             movea.l d7,a6
             move.l  d3,d0                    ; Zeile[w] = h (nur L: beide Lesekoepfe lesen nur L)
             lsl.l   #3,d0
+            {f"addi.l  #{wr_alias:#x},d0" if wr_alias else ""}
             move.l  d2,0(a2,d0.l)
             tst.l   {MODEF}(a3)
             bne     cout

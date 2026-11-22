@@ -10,7 +10,7 @@ Klang: Byte fuer Byte wie v1 (gen_chorus3 / gen_fx4 / gen_razer_113), gleiche Ma
   RFXH (Core-Slot 0): TRACK + Reverb Size -> MODESW(Pattern-Byte 52, Max 4, Rueckruf RSYNC).
 Speicher: Chorus 0x40171bc8 / 0x4016ea78 / 0x401728f8, Phaser 0x4018ff64 / 0x40185648 / 0x401857f8 / 0x4016f7d0,
   RAZR 0x4016cae8, Namen-Texte 0x40179140, Namen-Tabelle + F0 0x4015f50c, Weiche 0x4018af88.
-RAM: Chorus 0x4a33a000 (8240 B), Phaser 0x4233c100, RAZR 0x4233c180 / c200 / c210, RMODE 0x4233c3fc.
+RAM: Chorus 0x4233a000 (8240 B; bis smp46 ungecacht 0x4a33a000), Phaser 0x4233c100, RAZR 0x4233c180 / c200 / c210, RMODE 0x4233c3fc.
 Aufruf: g2_reverbfx.py [out.json]
 """
 import struct, sys
@@ -32,7 +32,8 @@ M_STR, M_TAB, M_UI = 0x40179140, 0x4015F50C, 0x4018AF88
 SIZE = {M_SETUP: 184, M_LOOP: 208, M_TAP: 184, M_STR: 184, M_TAB: 280, M_UI: 272,
         ph.M_PP: 272, ph.M_PT: 184, ph.M_PSA: 184, ph.M_PSB: 124, rz.M_RZ: 1024}
 R_HOOK, REVERB = 0x40056A2C, 0x400579C4
-STATE, CMAGIC = ch.STATE, 0x43484F42        # Chorus-Zustand + Ring (8240 B), 'CHOB' wie v1
+STATE, CMAGIC = ch.STATE - 0x08000000, 0x43484F42   # Chorus-Zustand + Ring (8240 B), 'CHOB' wie v1
+# smp47 (Last): gecachter Alias 0x4233a000 statt 0x4a33a000 (gleicher Speicher, nur die CPU greift zu; wie Phaser / RAZR)
 RMODE = 0x4233C3FC                          # RAM-Spiegel des Pattern-Bytes (gecacht, nur CPU)
 RMAX = 7                                    # smp9: + Hall, Room, Plate (Nutzlast, g2_reverbs.py)
 ROWS = {1: (b"Cho1 Send", b"CHO1", b"Cho1 Speed", b"SPD", b"Cho1 Depth", b"DEP"),
@@ -170,6 +171,7 @@ def build_razer2():
 
 def build_dsp():
     ch.configure()
+    c3.STATE = STATE                        # smp47: Chorus-Zustand + Ring ueber den gecachten Alias
     c3.MODE = RMODE                         # v2: Modus aus dem RAM-Spiegel statt aus dem Einstellungsblock
     setup, loop, tap = c3.build()
     tap = tap + bytes(c3.M_TAB - c3.M_TAP - len(tap)) + c3.table()

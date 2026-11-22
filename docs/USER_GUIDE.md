@@ -20,6 +20,7 @@ All controls of the full build on one page. Every patch has its own page with de
 | **RETRIG** + **GATE** | Track filter mode on (tap RETRIG = off). |
 | **RETRIG** + LFO SPEED | LFO Amount. |
 | **RETRIG** + **BPM** | Load meter on / off. |
+| **FUNC** + **GATE** (filter mode) | Track filter 12 dB ↔ 24 dB for the selected track. |
 | **GATE** + **PLAY** | Filter reset of the selected track. |
 | **PATTERN**, then **FUNC** + trig key | Direct jump to that pattern. |
 
@@ -123,7 +124,8 @@ Every new value shows a popup in the firmware's style while you turn.
 | tap **RETRIG** | filter mode off | [12](patches/12-track-filter.md) |
 | in the filter mode: **PITCH** / **COLOR** / **SHAPE** / **DECAY** | cutoff (127 = off) / resonance / envelope amount (bipolar, middle = off) / envelope decay | [12](patches/12-track-filter.md) |
 | hold a trig in the filter mode + turn one of them | p-lock the filter | [12](patches/12-track-filter.md) |
-| hold **GATE** + press **PLAY** | reset the filter of the selected track | [12](patches/12-track-filter.md) |
+| in the filter mode: **FUNC** + **GATE** | 12 dB ↔ 24 dB for the selected track (popup FILTER 12dB / 24dB) | [12](patches/12-track-filter.md) |
+| hold **GATE** + press **PLAY** | reset the filter of the selected track (also back to 12 dB) | [12](patches/12-track-filter.md) |
 | CC 74 / CC 71 | filter cutoff / resonance | [12](patches/12-track-filter.md) |
 | hold **RETRIG** + turn **LFO SPEED** | LFO Amount of the track: 0 = no LFO … 127 = full depth (default) | [13](patches/13-lfo-amount.md) |
 
@@ -142,7 +144,7 @@ LFO destination or velocity destination in the usual menus.
 
 | Setting | Where |
 |---|---|
-| reverb-slot effect, delay-slot effect, delay speed, groove, humanize, pad tracks | **in each pattern** (saved with the project) |
+| reverb-slot effect, delay-slot effect, delay speed, groove, humanize, pad tracks, filter 12 / 24 dB per track | **in each pattern** (saved with the project) |
 | CONTROL ALL relative / absolute | device settings |
 | trig conditions (also the new ones) | in the pattern, like every trig |
 | attack, strum time / pattern, filter, LFO Amount, Grit sample and settings, Vlvt / Monom parameters | **in the sound** (kit, project), p-locks in the pattern |

@@ -11,7 +11,9 @@ addresses of the Model:Cycles OS 1.13 MAIN OS; VA = file offset of section 3 + `
   instructions through `src/v2/cfemac.py`.
 - Audio runs in an interrupt, in blocks of 90112 ticks of the timer at `0xFC07000C` (135.168 MHz). The stock OS
   already uses about 77 % of that time, so every effect is written to keep instructions per block and uncached
-  memory accesses low.
+  memory accesses low. `tests/prof_fx.py` profiles every effect in the emulator (instructions, memory accesses by
+  region, 16-byte lines, a simple time model); v2.3.1 used it to cut the load of the effects without changing a bit of
+  their output.
 
 ## Patch format
 
@@ -120,7 +122,8 @@ gets 52–59 = 0.
 | 55 | 08 groove | groove 0–10 |
 | 56 | – | free (the per-pattern strum of v2.2; strum is per sound now) |
 | 57 | 19 pad-mode | pad tracks, bits 0–5 |
-| 58–59 | – | free |
+| 58 | 12 track-filter | 24 dB, bits 0–5 = tracks 1–6 (0 = 12 dB) |
+| 59 | – | free |
 | 60–63 | 00 core | tag `PCv2` |
 
 Invalid values count as 0. The effects read their pattern byte once per audio block, so changing patterns switches
@@ -146,7 +149,10 @@ reference to each mask is redirected, so the firmware does not draw from it any 
 **RAM:** the area behind the BSS, `0x423380b0..0x4233ffff`, is unused by the stock OS (DMA buffers start at
 `0x42340000`). Its uncached mirror is `0x4A33xxxx`. Audio state uses the cached alias `0x4233xxxx` (only the
 CPU touches it); state shared with the UI uses the uncached alias. 05 delay-fx also uses the upper half of the
-firmware's delay line (`0x4a400000`), which the stock delay does not reach.
+firmware's delay line (`0x4a400000`), which the stock delay does not reach. It writes the line through the uncached
+address (the memory stays current for the firmware's DMA) and, since v2.3.1, reads it through the cached alias
+`0x42400000`: every read head is at least 32 frames behind the write head, so a cache line only holds finished frames.
+An uncached access costs roughly 35–50 CPU cycles (estimated from load-meter measurements), a cached hit about one.
 
 | Address | Size | Kind | Patch | Use |
 |---|---|---|---|---|
@@ -320,6 +326,7 @@ firmware's delay line (`0x4a400000`), which the stock delay does not reach.
 | `0x40192ba4` | 272 | mask | 15 sampler |  |
 | `0x40194ad4` | 124 | mask | 00 core |  |
 | `0x40195a7c` | 124 | mask | 00 core |  |
+| `0x4233a000` | 8240 | RAM | 04 reverb-fx | chorus state + ring (cached alias since v2.3.1) |
 | `0x4233c100` | 56 | RAM | 04 reverb-fx | phaser state |
 | `0x4233c140` | 20 | RAM | 05 delay-fx | digital delay state |
 | `0x4233c180` | 56 | RAM | 04 reverb-fx | RAZR phaser state |
@@ -329,8 +336,10 @@ firmware's delay line (`0x4a400000`), which the stock delay does not reach.
 | `0x4233c378` | 4 | RAM | 06 strum | root note level |
 | `0x4233c3fc` | 1 | RAM | 04 reverb-fx | mode mirror |
 | `0x4233c3fd` | 2 | RAM | 05 delay-fx | type + speed mirror |
-| `0x43000000` | 20996 | RAM | 04 reverb-fx | payload (code, tables), copied at start |
-| `0x43000000` | 65536 | RAM | 00 core | payload (slots: reverb-fx +0x0, control-mode +0x7000, pad-mode +0x7800, strings +0x8000, sampler +0xb000, core +0xc000, mono +0xe000), copied at start |
+| `0x43000000` | 21352 | RAM | 04 reverb-fx | payload (code, tables), copied at start |
+| `0x43000000` | 65536 | RAM | 00 core | payload (slots: reverb-fx +0x0, track-filter +0x6000, control-mode +0x7000, pad-mode +0x7800, strings +0x8000, sampler +0xb000, core +0xc000, mono +0xe000), copied at start |
+| `0x43006000` | 760 | RAM | 12 track-filter | payload slot 'track-filter' (24 dB stage: code) |
+| `0x43006e00` | 240 | RAM | 12 track-filter | state of the 24 dB stage |
 | `0x430077fc` | 1 | RAM | 09 control-mode | Control All track selection (0 at start = all tracks) |
 | `0x43008000` | 9350 | RAM | 16 strings | payload slot 'strings' (code, tables) |
 | `0x4300be00` | 512 | RAM | 15 sampler | loaded samples (payload) |
@@ -340,7 +349,6 @@ firmware's delay line (`0x4a400000`), which the stock delay does not reach.
 | `0x43180000` | 27648 | RAM | 16 strings | state + ensemble ring per track |
 | `0x431a0000` | 3072 | RAM | 17 mono | state per track |
 | `0x43801000` | 49283072 | RAM | 15 sampler | sample memory (outside the image) |
-| `0x4a33a000` | 8240 | RAM | 04 reverb-fx | chorus state + ring |
 | `0x4a33c380` | 40 | RAM | 00 core | popup + key state (VARS) |
 | `0x4a33c3a4` | 4 | RAM | 08 groove | MACHINE pressed (in core VARS) |
 | `0x4a33c3a8` | 2 | RAM | 09 control-mode | SETTINGS used since press, byte for COPY |

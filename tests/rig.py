@@ -84,7 +84,10 @@ class Emu:
         buf = ctypes.create_string_buffer(0x10000); _keep.append(buf)
         u.mem_map_ptr(0x4A330000, 0x10000, UC_PROT_ALL, ctypes.addressof(buf))
         u.mem_map_ptr(0x42330000, 0x10000, UC_PROT_ALL, ctypes.addressof(buf))
-        for a, n in ((0x4A400000, 0x400000), (0x80000000, 0x10000), (RET, 0x1000), (STACK - 0x10000, 0x20000),
+        line = ctypes.create_string_buffer(0x400000); _keep.append(line)   # smp46: Delay-Zeile gecacht + ungecacht = derselbe Speicher
+        u.mem_map_ptr(0x4A400000, 0x400000, UC_PROT_ALL, ctypes.addressof(line))
+        u.mem_map_ptr(0x42400000, 0x400000, UC_PROT_ALL, ctypes.addressof(line))
+        for a, n in ((0x80000000, 0x10000), (RET, 0x1000), (STACK - 0x10000, 0x20000),
                      (0x4F020000, 0x30000), (EVT, 0x1000), (PATB, 0x10000), (0xFC070000, 0x1000), (0xFC040000, 0x10000)):
             u.mem_map(a, n)
         s.held, s.consumed, s.copies, s.heap = set(), [], [], [HEAP0]

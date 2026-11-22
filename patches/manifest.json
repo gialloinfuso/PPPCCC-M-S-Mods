@@ -1,6 +1,6 @@
 {
  "os": "Model:Cycles OS 1.13",
- "version": "2.3.0",
+ "version": "2.3.1",
  "patches": [
   "00-core.json",
   "01-mute-solo.json",
@@ -53,14 +53,14 @@
    "name": "official Model:Cycles OS 1.13",
    "target": "cycles",
    "section3_sha256": "cc99d4f0175d34d1e91d046e6ec85a5e8ab58ab9edbb3c24406acd48cb99ee98",
-   "full_set_result_sha256": "4c382ede30b6d6649a7a4dcdaec103ddaba2bb0313a22c41aa838afcd512c00b",
+   "full_set_result_sha256": "ed7f624e681bca86f9b152f71b9667aa252efef08e78698a451e11475a99686b",
    "result_size": 1809728
   },
   {
    "name": "Model:Cycles OS 1.13 for Model:Samples (Modded-Cycles crossflash.py --to samples)",
    "target": "samples",
    "section3_sha256": "b6fbc48f7d7d07cecae3859e07270fa2298f393e8afa2643144bdb4efc317aad",
-   "full_set_result_sha256": "a0028eb30a519cc7812a63d9c809dd4cd707222cb6a5f7c3b93f5c69a3731c83",
+   "full_set_result_sha256": "93daf9d7b53bd98bb5b4e9eb6fb6b43126c220d3c89f9688fde097505d61099a",
    "result_size": 1809728
   }
  ]

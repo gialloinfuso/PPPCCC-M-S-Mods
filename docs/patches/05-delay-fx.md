@@ -26,6 +26,7 @@ classic analog delays with modulation.
 
 - The sound is bit-identical to v1.0.0 (patches 07 and 09 there).
 - The modulated delays compute their LFO once per audio block and keep their state in cached RAM, to keep the audio load low.
+- **v2.3.1: less CPU load, same sound.** Digital, VIBDEL and CHODEL read the delay line through the cache; only the write goes to the uncached address, as before. CHODEL made six uncached memory accesses per sample, now one. The output is bit-for-bit the same.
 
 ## What is stored
 
@@ -41,6 +42,11 @@ Two hooks in the mixer: the delay call and the write DMA of the delay line. Once
 the type and speed of the running pattern, sets the parameter names and runs its own delay loop in its half of the
 delay memory, or jumps straight to the firmware's delay. The delay time is computed like the firmware's; if patch 03
 is installed (detected at run time), its exact triplets are used.
+
+The delay line (`0x4a400000`, 8 bytes per frame) is written through the uncached address, so the memory is always current
+for the firmware's DMA and when switching types. Since v2.3.1 the read heads use the cached alias of the same memory
+(`0x42400000`): every read head is at least 32 frames behind the write head, so a cache line only ever holds finished
+frames, and it could only go stale after a full turn of the ring (5.4 s).
 
 ### Hooks and memory
 
@@ -58,6 +64,6 @@ Addresses are virtual addresses of the OS 1.13 MAIN OS (file offset + 0x40000400
 
 ## Status
 
-Tested on a Model:Samples running the Cycles OS. Updated in v2.3.0 (speed on FUNC + DELAY SEND). Not yet tested on a real Model:Cycles.
+Tested on a Model:Samples running the Cycles OS. Updated in v2.3.0 (speed on FUNC + DELAY SEND) and v2.3.1 (less CPU load). Not yet tested on a real Model:Cycles.
 
 ← [04-reverb-fx](04-reverb-fx.md) · [all patches](../../README.md#patches) · [06-strum](06-strum.md) →

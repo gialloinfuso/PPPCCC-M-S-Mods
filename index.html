@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PPPCCC M:C Mods</title>
-<meta name="description" content="Extra features for the Elektron Model:Cycles OS 1.13 (also on a Model:Samples): three new machines, new effects, strum, grooves, a filter on every track, pad mode and more. The final release, 2.3.">
+<meta name="description" content="Extra features for the Elektron Model:Cycles OS 1.13 (also on a Model:Samples): three new machines, new effects, strum, grooves, a filter on every track, pad mode and more. The final release 2.3, now v2.3.1.">
 <style>
 :root{
   --bg:#141418; --bg2:#1b1b21; --card:#202028; --line:#2e2e38; --text:#ececf1; --muted:#9a9aa8;
@@ -106,7 +106,7 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:.9rem;border-top:1px sol
 
 <main>
 <div class="wrap hero">
-  <div class="eyebrow">Elektron Model:Cycles OS 1.13 · also on Model:Samples · v2.3.0</div>
+  <div class="eyebrow">Elektron Model:Cycles OS 1.13 · also on Model:Samples · v2.3.1</div>
   <h1>PPPCCC M:C Mods</h1>
   <div class="intro">
     <p class="first">With version 2.3 this project has more or less reached its final form, and with it I consider my
@@ -122,17 +122,18 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:.9rem;border-top:1px sol
     <p class="sign">— PPPCCC</p>
   </div>
   <div class="btns">
-     <a class="btn primary" href="flasher/">⚡ Flasher</a>
+    <a class="btn coffee" href="https://ko-fi.com/pppccc">☕ Buy me a coffee</a>
+    <a class="btn primary" href="flasher/">⚡ Flasher</a>
     <a class="btn" href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/archive/refs/heads/main.zip">⬇ Download</a>
     <a class="btn" href="#patches">Features</a>
     <a class="btn" href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods">View on GitHub</a>
-    <a class="btn coffee" href="https://infusogiallo.bandcamp.com/">🎹 Buy my music</a>
-    <a class="btn coffee" href="https://ko-fi.com/pppccc">☕️ Buy me a coffee</a>
-
   </div>
-  <div class="status"><b>Status: v2.3.0, the final release.</b> Every patch was developed in an emulator and tested on my
-    own Model:Samples running the Cycles OS. A real Model:Cycles has <b>not</b> been tested yet; the code paths are the
-    same. The patch numbers changed in 2.3 (<a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/CHANGELOG.md#v230-2026-11-12">changelog</a>).</div>
+  <div class="status"><b>Status: v2.3.1</b>, a small update of the final release 2.3: a <b>24 dB</b> mode for the track
+    filter and <b>less CPU load</b> for the effects, with bit-for-bit the same sound
+    (<a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/CHANGELOG.md#v231-2026-11-22">changelog</a>).
+    Every patch was developed in an emulator and tested on my own Model:Samples running the Cycles OS. A real
+    Model:Cycles has <b>not</b> been tested yet; the code paths are the same. The patch numbers changed in 2.3
+    (<a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/CHANGELOG.md#v230-2026-11-12">changelog</a>).</div>
 </div>
 
 <!-- ============================================================ PATCHES -->
@@ -218,9 +219,9 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:.9rem;border-top:1px sol
       <article class="patch" id="p12">
         <img src="assets/titles/12.png" alt="Patch 12: Per Track LP Filter + Env Amt &amp; Latched Filter Mode" width="680" height="360" loading="lazy">
         <div>
-          <div class="head"><span class="num">12</span><h3>Per Track LP Filter + Env Amt &amp; Latched Filter Mode</h3><span class="tag upd">Update v2.3</span><span class="tag req">needs core</span></div>
-          <p>A warm, resonant <b>12 dB low-pass filter</b> with its own envelope on every track. The filter mode puts it on the knobs: PITCH = cutoff, COLOR = resonance, SHAPE = envelope amount, DECAY = envelope decay. Real parameters (p-locks, LFO, velocity, CC 74 / 71). <b>New:</b> GATE + PLAY resets the filter of the selected track.</p>
-          <div class="how"><span class="ctl"><kbd>RETRIG</kbd> + <kbd>GATE</kbd> filter mode · tap <kbd>RETRIG</kbd> off · <kbd>GATE</kbd> + <kbd>PLAY</kbd> reset</span><a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/patches/12-track-filter.md">Details →</a></div>
+          <div class="head"><span class="num">12</span><h3>Per Track LP Filter + Env Amt &amp; Latched Filter Mode</h3><span class="tag upd">Update v2.3.1</span><span class="tag req">needs core</span></div>
+          <p>A warm, resonant <b>12 dB low-pass filter</b> with its own envelope on every track. The filter mode puts it on the knobs: PITCH = cutoff, COLOR = resonance, SHAPE = envelope amount, DECAY = envelope decay. Real parameters (p-locks, LFO, velocity, CC 74 / 71). GATE + PLAY resets the filter of the selected track. <b>New in v2.3.1:</b> FUNC + GATE in the filter mode switches the track between <b>12 dB and 24 dB</b> (saved per pattern).</p>
+          <div class="how"><span class="ctl"><kbd>RETRIG</kbd> + <kbd>GATE</kbd> filter mode · tap <kbd>RETRIG</kbd> off · <kbd>FUNC</kbd> + <kbd>GATE</kbd> 12 / 24 dB · <kbd>GATE</kbd> + <kbd>PLAY</kbd> reset</span><a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/patches/12-track-filter.md">Details →</a></div>
         </div>
       </article>
       <article class="patch" id="p11">
@@ -274,16 +275,16 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:.9rem;border-top:1px sol
       <article class="patch" id="p05">
         <img src="assets/titles/05.png" alt="Patch 05: Delay FX: Digital delay, VIBDEL, CHODEL" width="680" height="360" loading="lazy">
         <div>
-          <div class="head"><span class="num">05</span><h3>Delay FX: Digital delay, VIBDEL, CHODEL</h3><span class="tag upd">Update v2.3</span><span class="tag req">needs core</span></div>
-          <p>A bright, clean digital delay and two modulated delays for the delay slot, stored per pattern. <b>New:</b> the modulation speed is on FUNC + DELAY SEND.</p>
+          <div class="head"><span class="num">05</span><h3>Delay FX: Digital delay, VIBDEL, CHODEL</h3><span class="tag upd">Update v2.3.1</span><span class="tag req">needs core</span></div>
+          <p>A bright, clean digital delay and two modulated delays for the delay slot, stored per pattern. The modulation speed is on FUNC + DELAY SEND. <b>New in v2.3.1:</b> less CPU load, bit-for-bit the same sound.</p>
           <div class="how"><span class="ctl">hold <kbd>TRACK</kbd> + turn <kbd>Delay Time</kbd> · <kbd>FUNC</kbd> + <kbd>DELAY SEND</kbd> speed</span><a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/patches/05-delay-fx.md">Details →</a></div>
         </div>
       </article>
       <article class="patch" id="p04">
         <img src="assets/titles/04.png" alt="Patch 04: Reverb FX: Chorus I / II, Phaser, RAZR, Hall, Room, Plate" width="680" height="360" loading="lazy">
         <div>
-          <div class="head"><span class="num">04</span><h3>Reverb FX: Chorus I / II, Phaser, RAZR, Hall, Room, Plate</h3><span class="tag upd">Update v2.3</span><span class="tag req">needs core</span></div>
-          <p>Seven effects for the reverb slot: two lush choruses, a phaser, the dark lo-fi RAZR and — <b>new</b> — three reverbs of their own, <b>Hall</b>, <b>Room</b> and <b>Plate</b>, in the style of the Dragonfly Reverbs. Stored per pattern.</p>
+          <div class="head"><span class="num">04</span><h3>Reverb FX: Chorus I / II, Phaser, RAZR, Hall, Room, Plate</h3><span class="tag upd">Update v2.3.1</span><span class="tag req">needs core</span></div>
+          <p>Seven effects for the reverb slot: two lush choruses, a phaser, the dark lo-fi RAZR and three reverbs of their own, <b>Hall</b>, <b>Room</b> and <b>Plate</b>, in the style of the Dragonfly Reverbs. Stored per pattern. <b>New in v2.3.1:</b> less CPU load (the chorus about half), bit-for-bit the same sound.</p>
           <div class="how"><span class="ctl">hold <kbd>TRACK</kbd> + turn <kbd>Reverb Size</kbd></span><a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/patches/04-reverb-fx.md">Details →</a></div>
         </div>
       </article>
@@ -319,7 +320,8 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:.9rem;border-top:1px sol
 <section id="controls">
   <div class="wrap">
     <h2>Controls overview</h2>
-    <p class="sub">What is saved where, and all controls with their parameters:
+    <p class="sub">Everything in one document, to print or keep next to the device:
+      <a href="docs/PPPCCC-MC-Mods-2.3.1-Manual.pdf"><b>📖 Manual (PDF)</b></a> · What is saved where, and all controls with their parameters:
       <a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/USER_GUIDE.md">User guide</a> ·
       Version history: <a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods/blob/main/docs/CHANGELOG.md">Changelog</a></p>
     <div class="tablewrap">
@@ -346,6 +348,7 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:.9rem;border-top:1px sol
           <tr><td>11 Fill 2</td><td>hold <kbd>PAGE</kbd>, then also <kbd>FUNC</kbd></td><td>Fill 2</td></tr>
           <tr><td>12 Track filter</td><td>hold <kbd>RETRIG</kbd> + press <kbd>GATE</kbd> · tap <kbd>RETRIG</kbd></td><td>filter mode on · off</td></tr>
           <tr><td>12 Track filter</td><td>filter mode: <kbd>PITCH</kbd> / <kbd>COLOR</kbd> / <kbd>SHAPE</kbd> / <kbd>DECAY</kbd></td><td>cutoff / resonance / env amount / env decay</td></tr>
+          <tr><td>12 Track filter</td><td>filter mode: <kbd>FUNC</kbd> + <kbd>GATE</kbd></td><td>12 dB ↔ 24 dB for the track</td></tr>
           <tr><td>12 Track filter</td><td>hold <kbd>GATE</kbd> + press <kbd>PLAY</kbd></td><td>filter reset of the track</td></tr>
           <tr><td>13 LFO Amount</td><td>hold <kbd>RETRIG</kbd> + turn <kbd>LFO SPEED</kbd></td><td>LFO amount 0–127</td></tr>
           <tr><td>14 Direct jump</td><td><kbd>PATTERN</kbd>, then <kbd>FUNC</kbd> + trig</td><td>jump now, keep the position</td></tr>
@@ -376,9 +379,11 @@ footer{padding:32px 0 48px;color:var(--muted);font-size:.9rem;border-top:1px sol
         <h2 style="margin-top:32px">Repository layout</h2>
 <pre>patches/   one JSON per patch (offsets, new bytes, SHA-256 of the
            original bytes) + manifest.json
-tools/     build.py (.syx -> .syx), apply_patches.py (image -> image)
-docs/      user guide, build guide, technical reference, changelog,
-           one page per patch
+tools/     build.py (.syx -> .syx), apply_patches.py (image -> image),
+           make_manual.py (the PDF manual)
+flasher/   the browser flasher
+docs/      PDF manual, user guide, build guide, technical reference,
+           changelog, one page per patch
 grooves/   the groove tables (grooves.json)
 src/       the generators: readable ColdFire assembler in Python
 tests/     the emulator tests (run_all.py)
@@ -449,7 +454,7 @@ python3 tools/build.py --in model-cycles_OS1.13.syx \
 </main>
 
 <footer>
-  <div class="wrap">PPPCCC M:C Mods · v2.3.0 · not affiliated with Elektron ·
+  <div class="wrap">PPPCCC M:C Mods · v2.3.1 · not affiliated with Elektron ·
     <a href="https://github.com/gialloinfuso/PPPCCC-M-S-Mods">GitHub</a> · <a href="https://ko-fi.com/pppccc">Ko-fi</a></div>
 </footer>
 </body>

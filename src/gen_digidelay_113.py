@@ -37,8 +37,9 @@ LOUD = True                                  # Ausgang x6 statt x4 (v21: x4)
 NE, EQ, PL = 0x6, 0x7, 0xA
 
 
-def build_dl():
-    """fx.build_dl mit dem Charakter-Filter (CHAR). Register wie dort: d0 s, d6 Tiefpass, a6 Hochpass-Tiefanteil."""
+def build_dl(wr_alias=0):
+    """fx.build_dl mit dem Charakter-Filter (CHAR). Register wie dort: d0 s, d6 Tiefpass, a6 Hochpass-Tiefanteil.
+    wr_alias: 0 = wie v1. Sonst zeigt a2 auf den gecachten Alias der Zeile, geschrieben wird an a2 + wr_alias (v2 smp47)."""
     from cfasm import asm, done as adone
     if CHAR:
         filt = '''
@@ -144,6 +145,7 @@ def build_dl():
             sats.l  d0                       ; s = sats(x + g*y){filt}
             move.l  d3,d0
             lsl.l   #3,d0
+            {f"addi.l  #{wr_alias:#x},d0" if wr_alias else ""}
             move.l  d2,0(a2,d0.l)            ; in die Leitung
             move.l  d2,4(a2,d0.l){gain}
             move.l  d1,(a1)+

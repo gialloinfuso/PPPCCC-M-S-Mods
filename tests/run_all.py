@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run every emulator test against your own firmware.
 
-usage: python3 tests/run_all.py <section_3_MAIN_OS.bin of the official Model:Cycles OS 1.13> [test name ...] [-j N]
+usage: python3 tests/run_all.py <official model-cycles_OS1.13.syx, or its section_3_MAIN_OS.bin> [test name ...] [-j N]
 
 Needs: unicorn, capstone, numpy and Pillow (pip install unicorn capstone numpy pillow), and a checkout of
 https://github.com/18nelli18/Modded-Cycles (folder "Modded-Cycles": tools/sprites.py and the emulator rigs in

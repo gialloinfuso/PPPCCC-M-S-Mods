@@ -2,7 +2,7 @@
 import * as L from "./lib.js";
 
 const $ = (id) => document.getElementById(id);
-const VERSION_NAME = "pppccc-mods-2.3.0";
+const VERSION_NAME = "pppccc-mods-2.3.1";
 const MACHINES = ["sampler", "strings", "mono"];
 const st = { dev: null, mode: "first", files: {}, manifest: null, all: [], sel: new Set(), result: null, sending: false, stop: false };
 

@@ -21,10 +21,12 @@ A big thank-you to all the modders who made this possible with their work and th
 **[Features](#patches)** ·
 **[Project page](https://gialloinfuso.github.io/PPPCCC-M-S-Mods/)**
 
-> **Status: v2.3.0, the final release.** Every patch was developed in an emulator and tested on my own Model:Samples
-> running the Cycles OS. A real Model:Cycles has **not** been tested yet; the code paths are the same.
+> **Status: v2.3.1**, a small update of the final release 2.3. Every patch was developed in an emulator and tested on
+> my own Model:Samples running the Cycles OS. A real Model:Cycles has **not** been tested yet; the code paths are the same.
+> New in v2.3.1: a **24 dB** mode for the track filter (12), and **less CPU load** for the effects (04, 05) with
+> bit-for-bit the same sound. What changed: [changelog](docs/CHANGELOG.md#v231-2026-11-22).
 > New in v2.3.0: three machines (Grit, Vlvt, Monom), Hall / Room / Plate, per-track strum, parameter undo and pad mode,
-> plus updates to most patches. The patch numbers changed. What changed: [changelog](docs/CHANGELOG.md#v230-2026-11-12).
+> plus updates to most patches; the patch numbers changed ([changelog](docs/CHANGELOG.md#v230-2026-11-12)).
 
 ## The core
 
@@ -101,13 +103,15 @@ copying, pasting or clearing a pattern keeps it open.
 Hold **RETRIG** + turn **LFO SPEED** = how much of the LFO depth is used (0–127; 127 = as before). A real parameter:
 p-lockable, LFO and velocity destination, saved with the sound.
 
-### 12 · Per Track LP Filter + Env Amt & Latched Filter Mode ([details](docs/patches/12-track-filter.md)) · `UPDATE v2.3.0` · needs core
+### 12 · Per Track LP Filter + Env Amt & Latched Filter Mode ([details](docs/patches/12-track-filter.md)) · `UPDATE v2.3.1` · needs core
 
 <img src="assets/titles/12.png" width="320" alt="">
 
 A resonant 12 dB low-pass filter with its own envelope on every track. **RETRIG + GATE** = filter mode: **PITCH** =
 cutoff, **COLOR** = resonance, **SHAPE** = envelope amount, **DECAY** = envelope decay; tap **RETRIG** = off. Real
-parameters (p-locks, LFO, velocity, CC 74 / 71). **New:** **GATE + PLAY** resets the filter of the selected track.
+parameters (p-locks, LFO, velocity, CC 74 / 71). **GATE + PLAY** resets the filter of the selected track.
+**New in v2.3.1:** in the filter mode, **FUNC + GATE** switches the selected track between **12 dB and 24 dB** (saved
+per pattern).
 
 ### 11 · Fill 2 & Trig Conditions ([details](docs/patches/11-fill2.md)) · `UPDATE v2.3.0`
 
@@ -151,19 +155,20 @@ Swing per track = amount. **SETTINGS / MACHINE + Swing** = humanize timing / vel
 **New:** per track and saved with the sound. **FUNC + SHAPE** = strum time (OFF, 2–250 ms, then note values in tempo),
 **FUNC + COLOR** = pattern: UP, DOWN, RND, 1324, 1423, 4132, 4231, ROOT, TOP. Every chord note gets its own envelope.
 
-### 05 · Delay FX: Digital delay, VIBDEL, CHODEL ([details](docs/patches/05-delay-fx.md)) · `UPDATE v2.3.0` · needs core
+### 05 · Delay FX: Digital delay, VIBDEL, CHODEL ([details](docs/patches/05-delay-fx.md)) · `UPDATE v2.3.1` · needs core
 
 <img src="assets/titles/05.png" width="320" alt="">
 
-**TRACK + Delay Time**: Delay → Digital → VIBDEL → CHODEL. **FUNC + DELAY SEND** (**new**) = modulation speed.
-Stored per pattern.
+**TRACK + Delay Time**: Delay → Digital → VIBDEL → CHODEL. **FUNC + DELAY SEND** = modulation speed.
+Stored per pattern. **New in v2.3.1:** less CPU load, bit-for-bit the same sound.
 
-### 04 · Reverb FX: Chorus I / II, Phaser, RAZR, Hall, Room, Plate ([details](docs/patches/04-reverb-fx.md)) · `UPDATE v2.3.0` · needs core
+### 04 · Reverb FX: Chorus I / II, Phaser, RAZR, Hall, Room, Plate ([details](docs/patches/04-reverb-fx.md)) · `UPDATE v2.3.1` · needs core
 
 <img src="assets/titles/04.png" width="320" alt="">
 
-**TRACK + Reverb Size**: Reverb → Chorus I → Chorus II → Phaser → RAZR → **Hall → Room → Plate** (**new**, own
-algorithms in the style of the Dragonfly Reverbs). Stored per pattern.
+**TRACK + Reverb Size**: Reverb → Chorus I → Chorus II → Phaser → RAZR → **Hall → Room → Plate** (own
+algorithms in the style of the Dragonfly Reverbs). Stored per pattern. **New in v2.3.1:** less CPU load (Chorus about
+half), bit-for-bit the same sound.
 
 ### 03 · Delay Time as note values ([details](docs/patches/03-delay-notes.md))
 
@@ -208,6 +213,7 @@ previous mutes back), and muted tracks stay silent for pads and MIDI too. **New:
 | 11 Fill 2 | hold **PAGE**, then also **FUNC** | Fill 2 |
 | 12 Track filter | hold **RETRIG** + press **GATE** · tap **RETRIG** | filter mode on · off |
 | 12 Track filter | filter mode: **PITCH** / **COLOR** / **SHAPE** / **DECAY** | cutoff / resonance / env amount / env decay |
+| 12 Track filter | filter mode: **FUNC** + **GATE** | 12 dB ↔ 24 dB for the track |
 | 12 Track filter | hold **GATE** + press **PLAY** | filter reset of the track |
 | 13 LFO Amount | hold **RETRIG** + turn **LFO SPEED** | LFO amount 0–127 |
 | 14 Direct jump | **PATTERN**, then **FUNC** + trig | jump now, keep the position |
@@ -216,6 +222,8 @@ previous mutes back), and muted tracks stay silent for pads and MIDI too. **New:
 | 17 Monom | **COLOR** / **SHAPE** / **SWEEP** / **CONTOUR** · **FUNC + PITCH** / **CONTOUR** | wave / timbre / sub / drive · glide / noise |
 | 18 Param undo | **BACK** while the value popup shows | undo (3x longer) |
 | 19 Pad mode | hold **TRACK + RETRIG** (+ trig **1–6**) | show (switch) pad tracks |
+
+Everything in one document, to print or keep next to the device: **[📖 Manual (PDF)](docs/PPPCCC-MC-Mods-2.3.1-Manual.pdf)**
 
 What is saved where, and all controls with their parameters: [docs/USER_GUIDE.md](docs/USER_GUIDE.md) ·
 Version history: [docs/CHANGELOG.md](docs/CHANGELOG.md)
@@ -260,9 +268,10 @@ back an official OS.
 
 ```
 patches/   one JSON per patch (offsets, new bytes, SHA-256 of the original bytes) + manifest.json
-tools/     build.py (.syx -> .syx), apply_patches.py (MAIN OS image -> image),
+tools/     build.py (.syx -> .syx), apply_patches.py (MAIN OS image -> image), make_manual.py (the PDF manual),
            vendor/ (container code from elektron-model-tweaks and Modded-Cycles, MIT, unchanged)
-docs/      user guide, build guide, technical reference, changelog, one page per patch
+flasher/   the browser flasher (project page /flasher/)
+docs/      PDF manual, user guide, build guide, technical reference, changelog, one page per patch
 grooves/   the groove tables (grooves.json)
 src/       the generators: readable ColdFire assembler in Python (comments in German), regen.py
 tests/     the emulator tests (run_all.py)

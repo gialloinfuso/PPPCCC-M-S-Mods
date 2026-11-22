@@ -354,97 +354,50 @@ OPS = r'''
             subq.l  #1,d3
             bpl     z1
             rts
-    ; Hadamard 8 (Register 0..7 ab a1), Stufen 1 und 2 halbiert: H x / 4; dazu Register 9 += Zeile 1, 10 += Zeile 2 (Ausgang)
-    OP_HAD: moveq   #15,d3
-            movea.l d3,a4
-    hd1:    move.l  (a1),d0
-            move.l  64(a1),d1
-            move.l  128(a1),d2
-            move.l  192(a1),d3
-            move.l  256(a1),d4
-            move.l  320(a1),d5
-            move.l  384(a1),d6
-            move.l  448(a1),d7
-            asr.l   #1,d0
-            asr.l   #1,d1
-            move.l  d0,a2
-            add.l   d1,d0
-            sub.l   d1,a2
-            move.l  a2,d1
-            asr.l   #1,d2
-            asr.l   #1,d3
-            move.l  d2,a2
-            add.l   d3,d2
-            sub.l   d3,a2
-            move.l  a2,d3
-            asr.l   #1,d4
-            asr.l   #1,d5
-            move.l  d4,a2
-            add.l   d5,d4
-            sub.l   d5,a2
-            move.l  a2,d5
-            asr.l   #1,d6
-            asr.l   #1,d7
-            move.l  d6,a2
-            add.l   d7,d6
-            sub.l   d7,a2
-            move.l  a2,d7
-            asr.l   #1,d0
-            asr.l   #1,d2
-            move.l  d0,a2
-            add.l   d2,d0
-            sub.l   d2,a2
-            move.l  a2,d2
-            asr.l   #1,d1
-            asr.l   #1,d3
-            move.l  d1,a2
-            add.l   d3,d1
-            sub.l   d3,a2
-            move.l  a2,d3
-            asr.l   #1,d4
-            asr.l   #1,d6
-            move.l  d4,a2
-            add.l   d6,d4
-            sub.l   d6,a2
-            move.l  a2,d6
-            asr.l   #1,d5
-            asr.l   #1,d7
-            move.l  d5,a2
-            add.l   d7,d5
-            sub.l   d7,a2
-            move.l  a2,d7
-            move.l  d0,a2
-            add.l   d4,d0
-            sub.l   d4,a2
-            move.l  a2,d4
-            move.l  d1,a2
-            add.l   d5,d1
-            sub.l   d5,a2
-            move.l  a2,d5
-            move.l  d2,a2
-            add.l   d6,d2
-            sub.l   d6,a2
-            move.l  a2,d6
-            move.l  d3,a2
-            add.l   d7,d3
-            sub.l   d7,a2
-            move.l  a2,d7
-            move.l  d0,(a1)
-            move.l  d1,64(a1)
-            move.l  d2,128(a1)
-            move.l  d3,192(a1)
-            move.l  d4,256(a1)
-            move.l  d5,320(a1)
-            move.l  d6,384(a1)
-            move.l  d7,448(a1)
-            add.l   d1,576(a1)
-            add.l   d2,640(a1)
-            addq.l  #4,a1
-            subq.l  #1,a4
-            move.l  a4,d0
-            bpl     hd1
-            rts
 '''
+
+
+def had_asm():
+    """smp47 (Last): Hadamard 8 (Register 0..7 ab a1), Stufen 1 und 2 halbiert: H x / 4; dazu Register 9 += Zeile 1,
+    10 += Zeile 2 (Ausgang). Schmetterling in 3 statt 4 Befehlen ohne Hilfsregister: sub.l b,a (a-b) ; add.l b,b (2b) ;
+    add.l a,b (a+b) - modulo 2^32 gleich wie add/sub vorher (bitgleich), danach tauschen die beiden Register die Rollen."""
+    r = list(range(8))                     # logisch -> d-Register
+    out = ['    ; Hadamard 8 (smp47: had_asm)',
+           '    OP_HAD: moveq   #15,d3',
+           '            movea.l d3,a4',
+           '    hd1:    move.l  (a1),d0'] + [f'            move.l  {64 * k}(a1),d{k}' for k in range(1, 8)]
+    for pairs, half in (([(0, 1), (2, 3), (4, 5), (6, 7)], True), ([(0, 2), (1, 3), (4, 6), (5, 7)], True),
+                        ([(0, 4), (1, 5), (2, 6), (3, 7)], False)):
+        for i, j in pairs:
+            a, b = r[i], r[j]
+            if half: out += [f'            asr.l   #1,d{a}', f'            asr.l   #1,d{b}']
+            out += [f'            sub.l   d{b},d{a}', f'            add.l   d{b},d{b}', f'            add.l   d{a},d{b}']
+            r[i], r[j] = b, a                  # d{b} = a + b (logisch i), d{a} = a - b (logisch j)
+    out += [f'            move.l  d{r[0]},(a1)'] + [f'            move.l  d{r[k]},{64 * k}(a1)' for k in range(1, 8)]
+    out += [f'            add.l   d{r[1]},576(a1)', f'            add.l   d{r[2]},640(a1)',
+            '            addq.l  #4,a1', '            subq.l  #1,a4', '            move.l  a4,d0', '            bpl     hd1',
+            '            rts', '']
+    return '\n'.join(out)
+
+
+def unroll4(text, label):
+    """smp47 (Last): Schleife 'label: ... subq.l #1,d3 ; bpl label' ueber 16 Samples -> 4 Durchlaeufe mit 4-fachem
+    Koerper (gleiche Befehle in gleicher Reihenfolge, nur 2 statt 8 Befehle Schleifenzaehlung je 4 Samples). Das Ausrollen
+    nur x4 (nicht x16): der Befehls-Cache (8 KB) wird von den Stimmen jeden Block geleert, jede Zeile Code kostet."""
+    ls = text.split('\n')
+    k = next(n for n, x in enumerate(ls) if x.lstrip().startswith(label + ':'))
+    e = next(n for n in range(k, len(ls)) if ls[n].split() == ['subq.l', '#1,d3'] and ls[n + 1].split() == ['bpl', label])
+    first = ls[k].split(':', 1)[1]
+    body = ['           ' + first] + ls[k + 1:e]
+    pre = ls[:k]
+    if pre[-1].split() == ['moveq', '#15,d3']: pre = pre[:-1]      # nur Zaehler: ersetzt
+    return '\n'.join(pre + ['            moveq   #3,d3', f'    {label}:'] + body * 4 + ls[e:])
+
+
+for _l in ('ap3', 'sf1', 'fw2', 'dm1', 'tp2'):
+    OPS = unroll4(OPS, _l)
+OPS += had_asm()
+
 
 MAIN = r'''
     ; ---------------- Einsprung (Stack: ret, out 48, in 52, params 56 nach dem Sichern)
@@ -557,7 +510,19 @@ MAIN = r'''
             movclr  acc0,d1
             moveq   #15,d3
     ro:     move.l  (a1)+,d1
-            jsr     OG
+            mac     d5,d1,acc0               ; OG inline (smp47): d1 * Pegel * 128, gesaettigt
+            movclr  acc0,d1
+            move.l  d1,d2
+            asl.l   #7,d1
+            move.l  d1,d4
+            asr.l   #7,d4
+            cmp.l   d2,d4
+            beq     oga
+            move.l  #0x7fffffff,d1
+            tst.l   d2
+            bpl     oga
+            addq.l  #1,d1
+    oga:
             move.l  d6,d0
             asr.l   #1,d0
             move.l  d1,d6
@@ -566,7 +531,19 @@ MAIN = r'''
             move.l  d0,(a0)
             move.l  d6,8(a0)
             move.l  (a2)+,d1
-            jsr     OG
+            mac     d5,d1,acc0               ; OG inline (smp47): d1 * Pegel * 128, gesaettigt
+            movclr  acc0,d1
+            move.l  d1,d2
+            asl.l   #7,d1
+            move.l  d1,d4
+            asr.l   #7,d4
+            cmp.l   d2,d4
+            beq     ogb
+            move.l  #0x7fffffff,d1
+            tst.l   d2
+            bpl     ogb
+            addq.l  #1,d1
+    ogb:
             move.l  d7,d0
             asr.l   #1,d0
             move.l  d1,d7
@@ -631,19 +608,6 @@ MAIN = r'''
             subq.l  #1,d7
             bpl     sg1
             rts
-    OG:     mac     d5,d1,acc0               ; d1 * Pegel * 128, gesaettigt
-            movclr  acc0,d1
-            move.l  d1,d2
-            asl.l   #7,d1
-            move.l  d1,d4
-            asr.l   #7,d4
-            cmp.l   d2,d4
-            beq     og1
-            move.l  #0x7fffffff,d1
-            tst.l   d2
-            bpl     og1
-            addq.l  #1,d1
-    og1:    rts
 '''
 
 
